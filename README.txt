@@ -12,3 +12,6 @@ path: dyslexie
 will run at default port 8000
 6. Move to path: dyslexie\fastapi-ml
 7. Read the README file and follow the instructions.
+
+Keep update the requirements file every time new package installs.
+`pip freeze > requirements.txt`
