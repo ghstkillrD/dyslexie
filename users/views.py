@@ -6,6 +6,8 @@ from .serializers import UserSerializer, RegisterSerializer, StudentSerializer, 
 from rest_framework.permissions import IsAuthenticated
 from .permissions import IsTeacherOrReadOnly, IsLinkedDoctorOrParentReadOnly
 from rest_framework.decorators import action
+import requests
+from django.core.files.uploadedfile import InMemoryUploadedFile
 
 class UserListCreateView(generics.ListCreateAPIView):
     queryset = User.objects.all()
@@ -77,3 +79,29 @@ class StudentUserLinkViewSet(viewsets.ModelViewSet):
         elif user.role in ['doctor', 'parent']:
             return StudentUserLink.objects.filter(user=user)
         return StudentUserLink.objects.none()
+
+class AnalyzeHandwritingView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        image = request.FILES.get('image')
+        if not image:
+            return Response({"error": "No image uploaded"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not isinstance(image, InMemoryUploadedFile):
+            return Response({"error": "Invalid file format"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Prepare request for FastAPI
+        try:
+            # Read the file content safely
+            image_data = image.read()
+            files = {'image': (image.name, image_data, image.content_type)}
+            
+            # Send the request to the FastAPI service
+            response = requests.post('http://localhost:8001/analyze-handwriting/', files=files)
+            if response.status_code == 200:
+                return Response(response.json())
+            else:
+                return Response({"error": "ML service error", "detail": response.text}, status=response.status_code)
+        except requests.exceptions.RequestException as e:
+            return Response({"error": "ML service unreachable", "detail": str(e)}, status=500)
