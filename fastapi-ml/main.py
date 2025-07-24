@@ -7,6 +7,7 @@ from utils.image_utils import segment_letters, predict_letters, calculate_dyslex
 from pydantic import BaseModel
 from typing import List
 from utils.task_utils import evaluate_tasks
+from utils.result_utils import compute_final_score, interpret_final_result
 
 app = FastAPI()
 model = load_model()
@@ -45,3 +46,18 @@ class TaskEvaluationRequest(BaseModel):
 def evaluate_task_scores(payload: TaskEvaluationRequest):
     result = evaluate_tasks(payload.tasks)
     return result
+
+# Define Result schema
+class DiagnosisRequest(BaseModel):
+    ml_score: float
+    task_score: float
+    cutoff: float  # Doctor-defined threshold
+
+@app.post("/final-diagnosis/")
+async def final_diagnosis(data: DiagnosisRequest):
+    final_score = compute_final_score(data.ml_score, data.task_score)
+    diagnosis = interpret_final_result(final_score, data.cutoff)
+    return {
+        "final_score": final_score,
+        "diagnosis": diagnosis
+    }
