@@ -42,3 +42,16 @@ class StudentUserLink(models.Model):
 
     def __str__(self):
         return f"{self.role} - {self.user.username} for {self.student.name}"
+
+class HandwritingSample(models.Model):
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='handwriting_samples')
+    image = models.ImageField(upload_to='handwriting_samples/')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    # Prediction results from FastAPI
+    dyslexia_score = models.FloatField(null=True, blank=True)
+    interpretation = models.CharField(max_length=50, null=True, blank=True)
+    letter_counts = models.JSONField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Sample for {self.student.name} on {self.uploaded_at.date()}"
