@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse
 import shutil
 import os
@@ -14,6 +14,12 @@ model = load_model()
 
 @app.post("/analyze-handwriting/")
 async def analyze_handwriting(image: UploadFile = File(...)):
+    if not image:
+        raise HTTPException(status_code=400, detail="Image file is required")
+
+    if not image.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Invalid file type. Must be an image.")
+    
     # Save uploaded image
     temp_path = f"temp_{image.filename}"
     with open(temp_path, "wb") as buffer:

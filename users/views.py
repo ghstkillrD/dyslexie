@@ -105,3 +105,35 @@ class AnalyzeHandwritingView(APIView):
                 return Response({"error": "ML service error", "detail": response.text}, status=response.status_code)
         except requests.exceptions.RequestException as e:
             return Response({"error": "ML service unreachable", "detail": str(e)}, status=500)
+
+class EvaluateTasksView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        try:
+            response = requests.post(
+                'http://localhost:8001/evaluate-tasks/',
+                json=request.data
+            )
+            return Response(response.json(), status=response.status_code)
+        except requests.exceptions.RequestException as e:
+            return Response(
+                {"error": "FastAPI service unreachable", "detail": str(e)},
+                status=500
+            )
+
+class FinalDiagnosisView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        try:
+            response = requests.post(
+                'http://localhost:8001/final-diagnosis/',
+                json=request.data
+            )
+            return Response(response.json(), status=response.status_code)
+        except requests.exceptions.RequestException as e:
+            return Response(
+                {"error": "FastAPI service unreachable", "detail": str(e)},
+                status=500
+            )
