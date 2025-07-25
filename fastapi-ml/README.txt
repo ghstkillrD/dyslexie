@@ -8,3 +8,6 @@ path: dyslexie\fastapi-ml
 4. Run FastAPI
 `uvicorn main:app --reload --port 8001`
 will run in 8001 port
+
+Keep update the requirements file every time new package installs.
+`pip freeze > requirements.txt`
