@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 
@@ -10,15 +10,47 @@ export default function AddStudent() {
     grade: '',
     gender: ''
   })
+  const [doctors, setDoctors] = useState([])
+  const [parents, setParents] = useState([])
+  const [selectedDoctors, setSelectedDoctors] = useState([])
+  const [selectedParents, setSelectedParents] = useState([])
   const navigate = useNavigate()
 
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    axios.get('http://127.0.0.1:8000/api/users/', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    .then(res => {
+      setDoctors(res.data.filter(u => u.role === 'doctor'))
+      setParents(res.data.filter(u => u.role === 'parent'))
+    })
+    .catch(err => console.error(err))
+  }, [])
+
   const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value })
+
+  const toggleDoctor = email => {
+    setSelectedDoctors(prev =>
+      prev.includes(email) ? prev.filter(d => d !== email) : [...prev, email]
+    )
+  }
+
+  const toggleParent = email => {
+    setSelectedParents(prev =>
+      prev.includes(email) ? prev.filter(p => p !== email) : [...prev, email]
+    )
+  }
 
   const handleSubmit = async e => {
     e.preventDefault()
     try {
       const token = localStorage.getItem('token')
-      await axios.post('http://127.0.0.1:8000/api/users/students/', form, {
+      await axios.post('http://127.0.0.1:8000/api/users/students/', {
+        ...form,
+        doctor_emails: selectedDoctors,
+        parent_emails: selectedParents
+       }, {
         headers: { Authorization: `Bearer ${token}` }
       })
       navigate('/teacher/students')
@@ -40,6 +72,35 @@ export default function AddStudent() {
           <option value="male">Male</option>
           <option value="female">Female</option>
         </select>
+
+        <div className="mt-4">
+          <h3 className="text-lg font-bold">Select Doctors</h3>
+          <ul>
+            {doctors.map(doc => (
+              <li key={doc.id} className="flex justify-between border px-2 py-1">
+                <span>{doc.username} ({doc.email})</span>
+                <button type="button" onClick={() => toggleDoctor(doc.email)} className={`px-2 py-1 rounded ${selectedDoctors.includes(doc.email) ? 'bg-green-500 text-white' : 'bg-gray-300'}`}>
+                  {selectedDoctors.includes(doc.email) ? 'Selected' : 'Select'}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="mt-4">
+          <h3 className="text-lg font-bold">Select Parents</h3>
+          <ul>
+            {parents.map(par => (
+              <li key={par.id} className="flex justify-between border px-2 py-1">
+                <span>{par.username} ({par.email})</span>
+                <button type="button" onClick={() => toggleParent(par.email)} className={`px-2 py-1 rounded ${selectedParents.includes(par.email) ? 'bg-green-500 text-white' : 'bg-gray-300'}`}>
+                  {selectedParents.includes(par.email) ? 'Selected' : 'Select'}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+        
         <button type="submit" className="bg-green-500 text-white px-3 py-1 rounded">Save</button>
         <button type="button" onClick={() => navigate('/teacher/students')} className="ml-2 bg-gray-500 text-white px-3 py-1 rounded">Cancel</button>
       </form>
