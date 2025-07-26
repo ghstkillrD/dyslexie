@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
+import UserSelectorTable from '../components/UserSelectorTable'
 
 export default function AddStudent() {
   const [form, setForm] = useState({
@@ -74,31 +75,21 @@ export default function AddStudent() {
         </select>
 
         <div className="mt-4">
-          <h3 className="text-lg font-bold">Select Doctors</h3>
-          <ul>
-            {doctors.map(doc => (
-              <li key={doc.id} className="flex justify-between border px-2 py-1">
-                <span>{doc.username} ({doc.email})</span>
-                <button type="button" onClick={() => toggleDoctor(doc.email)} className={`px-2 py-1 rounded ${selectedDoctors.includes(doc.email) ? 'bg-green-500 text-white' : 'bg-gray-300'}`}>
-                  {selectedDoctors.includes(doc.email) ? 'Selected' : 'Select'}
-                </button>
-              </li>
-            ))}
-          </ul>
+          <UserSelectorTable
+            users={doctors}
+            selected={selectedDoctors}
+            onToggle={toggleDoctor}
+            title="Select Doctors"
+          />
         </div>
 
         <div className="mt-4">
-          <h3 className="text-lg font-bold">Select Parents</h3>
-          <ul>
-            {parents.map(par => (
-              <li key={par.id} className="flex justify-between border px-2 py-1">
-                <span>{par.username} ({par.email})</span>
-                <button type="button" onClick={() => toggleParent(par.email)} className={`px-2 py-1 rounded ${selectedParents.includes(par.email) ? 'bg-green-500 text-white' : 'bg-gray-300'}`}>
-                  {selectedParents.includes(par.email) ? 'Selected' : 'Select'}
-                </button>
-              </li>
-            ))}
-          </ul>
+          <UserSelectorTable
+            users={parents}
+            selected={selectedParents}
+            onToggle={toggleParent}
+            title="Select Parents"
+          />
         </div>
         
         <button type="submit" className="bg-green-500 text-white px-3 py-1 rounded">Save</button>
