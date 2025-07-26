@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useState, useContext } from 'react'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 import * as jwt_decode from 'jwt-decode'
+import { AuthContext } from '../store/AuthContext'
 
 export default function LoginPage() {
+  const { login } = useContext(AuthContext)
   const [form, setForm] = useState({ email: '', password: '' })
   const [role, setRole] = useState('teacher')
   const [error, setError] = useState('')
@@ -20,8 +22,7 @@ export default function LoginPage() {
         password: form.password
       })
       const token = res.data.access
-      localStorage.setItem('token', token)
-      const decoded = jwt_decode(token)
+      login(token)
       if (role === 'teacher') navigate('/teacher/students')
       else if (role === 'doctor') navigate('/doctor/students')
       else navigate('/parent/students')
