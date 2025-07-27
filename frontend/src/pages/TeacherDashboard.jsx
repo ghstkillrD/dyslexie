@@ -76,6 +76,12 @@ export default function TeacherDashboard() {
                 >
                   Delete
                 </button>
+                <button
+                  onClick={() => navigate(`/spw/${s.student_id}`)}
+                  className="bg-blue-500 text-white px-3 py-1 rounded"
+                >
+                  View Progress
+                </button>
               </td>
             </tr>
           ))}
