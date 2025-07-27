@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom'
 export default function DoctorDashboard() {
   const { user, logout } = useContext(AuthContext)
   const [students, setStudents] = useState([])
+  const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -17,12 +18,28 @@ export default function DoctorDashboard() {
     .catch(err => console.error(err))
   }, [])
 
+  const filteredStudents = students.filter((student) =>
+    `${student.name} ${student.school} ${student.grade} ${student.gender}`
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="p-6">
       <h2 className="text-2xl font-bold">Doctor Dashboard</h2>
       <p className="mb-4">Welcome, {user?.username || 'Doctor'}!</p>
 
       <h3 className="text-xl font-semibold mb-2">Assigned Students</h3>
+      
+      <input
+        type="text"
+        placeholder="Search students..."
+        className="border p-2 rounded w-full mb-3"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+      />
+
+      <div className="overflow-y-auto max-h-80 border rounded">
       <div className="border rounded p-3 bg-white">
         {students.length === 0 ? (
           <p className="text-gray-500">No assigned students</p>
@@ -37,7 +54,7 @@ export default function DoctorDashboard() {
               </tr>
             </thead>
             <tbody>
-              {students.map(student => (
+              {filteredStudents.map(student => (
                 <tr key={student.student_id} className="border-t">
                   <td className="p-2">{student.name}</td>
                   <td className="p-2">{student.school}</td>
@@ -55,6 +72,7 @@ export default function DoctorDashboard() {
             </tbody>
           </table>
         )}
+      </div>
       </div>
 
       <button onClick={logout} className="mt-4 bg-red-500 text-white px-3 py-1 rounded">Logout</button>

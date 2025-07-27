@@ -6,6 +6,7 @@ import { AuthContext } from "../store/AuthContext";
 export default function TeacherDashboard() {
   const { user, logout } = useContext(AuthContext);
   const [students, setStudents] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -32,6 +33,12 @@ export default function TeacherDashboard() {
     }
   };
 
+  const filteredStudents = students.filter((s) =>
+    `${s.name} ${s.school} ${s.grade} ${s.gender}`
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="p-6">
       <h2 className="text-2xl font-bold">Teacher Dashboard</h2>
@@ -45,7 +52,17 @@ export default function TeacherDashboard() {
       </button>
 
       <h3 className="text-xl font-semibold mb-2">Your Students</h3>
-      <table className="table-auto w-full border">
+
+      <input
+        type="text"
+        placeholder="Search students..."
+        className="border p-2 rounded w-full mb-3"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+      />
+
+      <div className="overflow-y-auto max-h-80 border rounded">
+      <table className="w-full border-collapse">
         <thead>
           <tr className="bg-gray-200">
             <th className="border px-2 py-1">Name</th>
@@ -55,8 +72,8 @@ export default function TeacherDashboard() {
           </tr>
         </thead>
         <tbody>
-          {students.map((s) => (
-            <tr key={s.student_id}>
+          {filteredStudents.map((s) => (
+            <tr key={s.student_id} className="hover:bg-gray-100">
               <td className="border px-2 py-1">{s.name}</td>
               <td className="border px-2 py-1">{s.school}</td>
               <td className="border px-2 py-1">{s.grade}</td>
@@ -87,6 +104,7 @@ export default function TeacherDashboard() {
           ))}
         </tbody>
       </table>
+      </div>
 
       <button
         onClick={logout}
