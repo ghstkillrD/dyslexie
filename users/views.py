@@ -1,7 +1,7 @@
 from rest_framework import generics, status, viewsets, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .models import User, Student, StudentUserLink
+from .models import User, Student, StudentUserLink, StageProgress
 from .serializers import UserSerializer, RegisterSerializer, StudentSerializer, StudentUserLinkSerializer, LinkedUserSerializer
 from rest_framework.permissions import IsAuthenticated
 from .permissions import IsTeacherOrReadOnly, IsLinkedDoctorOrParentReadOnly
@@ -28,14 +28,15 @@ class StudentViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         # Automatically set teacher as logged-in user
-        serializer.save(teacher=self.request.user)
+        student = serializer.save(teacher=self.request.user)
+        StageProgress.objects.create(student=student)  # Initialize progress
 
     def get_queryset(self):
         user = self.request.user
         if user.role == 'teacher':
             return Student.objects.filter(teacher=user)
         elif user.role in ['doctor', 'parent']:
-            return Student.objects.filter(studentuserlink__user=user)
+            return Student.objects.filter(student_links__user=user)
         return Student.objects.none()
     
     @action(detail=True, methods=['get'], permission_classes=[permissions.IsAuthenticated])
@@ -65,6 +66,15 @@ class StudentViewSet(viewsets.ModelViewSet):
 
         link.delete()
         return Response({'success': 'User unlinked successfully'})
+    
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def complete_stage(self, request, pk=None):
+        student = self.get_object()
+        progress = StageProgress.objects.get(student=student)
+        progress.current_stage += 1
+        progress.completed_stages.append(progress.current_stage - 1)
+        progress.save()
+        return Response({'status': 'stage advanced', 'current_stage': progress.current_stage})
 
 class StudentUserLinkViewSet(viewsets.ModelViewSet):
     queryset = StudentUserLink.objects.all()

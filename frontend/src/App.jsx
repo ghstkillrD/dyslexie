@@ -8,7 +8,7 @@ import DoctorDashboard from './pages/DoctorDashboard'
 import ParentDashboard from './pages/ParentDashboard'
 import AddStudent from './pages/AddStudent'
 import EditStudent from './pages/EditStudent'
-import StudentProgress from './pages/StudentProgress'
+import StudentProgressWindow from './pages/StudentProgressWindow.jsx'
 
 function App() {
   return (
@@ -25,7 +25,7 @@ function App() {
         <Route path="/teacher/students/add" element={<ProtectedRoute><AddStudent /></ProtectedRoute>} />
         <Route path="/teacher/students/edit/:id" element={<ProtectedRoute><EditStudent /></ProtectedRoute>} />
 
-        <Route path="/spw/:student_id" element={<StudentProgress />} />
+        <Route path="/spw/:student_id" element={<StudentProgressWindow />} />
       </Routes>
     </div>
   )

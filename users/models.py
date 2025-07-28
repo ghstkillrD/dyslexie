@@ -1,6 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.conf import settings
+from django.contrib.postgres.fields import ArrayField
 
 class User(AbstractUser):
     ROLE_CHOICES = (
@@ -36,7 +37,7 @@ class StudentUserLink(models.Model):
         ('parent', 'Parent'),
     )
 
-    student = models.ForeignKey(Student, on_delete=models.CASCADE)
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="student_links")
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     role = models.CharField(max_length=10, choices=ROLE_CHOICES)
 
@@ -55,3 +56,17 @@ class HandwritingSample(models.Model):
 
     def __str__(self):
         return f"Sample for {self.student.name} on {self.uploaded_at.date()}"
+
+class StageProgress(models.Model):
+    student = models.OneToOneField('Student', on_delete=models.CASCADE, related_name='stage_progress')
+    current_stage = models.IntegerField(default=1)
+    completed_stages = ArrayField(models.IntegerField(), default=list, blank=True)
+
+    def mark_stage_complete(self, stage):
+        if stage not in self.completed_stages:
+            self.completed_stages.append(stage)
+        self.current_stage = stage + 1
+        self.save()
+
+    def __str__(self):
+        return f"{self.student.name} - Stage {self.current_stage}"

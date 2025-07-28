@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Student, StudentUserLink
+from .models import User, Student, StudentUserLink, StageProgress
 from django.contrib.auth.password_validation import validate_password
 
 class UserSerializer(serializers.ModelSerializer):
@@ -23,6 +23,11 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
         return user
 
+class StageProgressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StageProgress
+        fields = ['current_stage', 'completed_stages']
+
 class StudentSerializer(serializers.ModelSerializer):
     # List of emails to assign
     doctor_emails = serializers.ListField(
@@ -31,12 +36,13 @@ class StudentSerializer(serializers.ModelSerializer):
     parent_emails = serializers.ListField(
         child=serializers.EmailField(), write_only=True, required=False
     )
+    stage_progress = StageProgressSerializer(read_only=True)
 
     class Meta:
         model = Student
         fields = [
             'student_id', 'name', 'birthday', 'school', 'grade', 'gender',
-            'doctor_emails', 'parent_emails'
+            'doctor_emails', 'parent_emails', 'stage_progress'
         ]
     
     def create(self, validated_data):
