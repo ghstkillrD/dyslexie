@@ -1,8 +1,8 @@
 from rest_framework import generics, status, viewsets, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .models import User, Student, StudentUserLink, StageProgress
-from .serializers import UserSerializer, RegisterSerializer, StudentSerializer, StudentUserLinkSerializer, LinkedUserSerializer, MyTokenObtainPairSerializer
+from .models import User, Student, StudentUserLink, StageProgress, HandwritingSample
+from .serializers import UserSerializer, RegisterSerializer, StudentSerializer, StudentUserLinkSerializer, LinkedUserSerializer, MyTokenObtainPairSerializer, HandwritingSampleSerializer
 from rest_framework.permissions import IsAuthenticated
 from .permissions import IsTeacherOrReadOnly, IsLinkedDoctorOrParentReadOnly
 from rest_framework.decorators import action
@@ -31,7 +31,7 @@ class StudentViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # Automatically set teacher as logged-in user
         student = serializer.save(teacher=self.request.user)
-        StageProgress.objects.create(student=student)  # Initialize progress
+        StageProgress.objects.get_or_create(student=student, defaults={'current_stage': 1})  # Initialize progress
 
     def get_queryset(self):
         user = self.request.user
@@ -150,9 +150,8 @@ class AnalyzeHandwritingView(APIView):
             
             # Send the request to the FastAPI service
             response = requests.post('http://localhost:8001/analyze-handwriting/', files=files)
-            if response.status_code == 200:
-                return Response(response.json())
-            else:
+
+            if response.status_code != 200:
                 return Response({"error": "ML service error", "detail": response.text}, status=response.status_code)
 
             data = response.json()
