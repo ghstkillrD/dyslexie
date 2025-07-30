@@ -2,6 +2,7 @@ import { useParams } from 'react-router-dom'
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
+import { useNavigate } from 'react-router-dom'
 
 export default function StudentProgressWindow() {
   const { student_id } = useParams()
@@ -9,6 +10,7 @@ export default function StudentProgressWindow() {
   const [student, setStudent] = useState(null);
   const [progress, setProgress] = useState({ current_stage: 1, completed_stages: [] });
   const [userRole, setUserRole] = useState(null);
+    const navigate = useNavigate()
 
   // Stage 1 state
   const [image, setImage] = useState(null);
@@ -216,6 +218,21 @@ export default function StudentProgressWindow() {
           <p className="text-gray-500 mt-2">Stage {currentStage} content goes here.</p>
         )}
       </div>
+      <button
+        type="button"
+        onClick={() => {
+          if (userRole === 'teacher') {
+            navigate('/teacher/students');
+          } else if (userRole === 'doctor') {
+            navigate('/doctor/students');
+          } else if (userRole === 'parent') {
+            navigate('/parent/students');
+          }
+        }}
+        className="ml-2 bg-gray-500 text-white px-3 py-1 rounded"
+      >
+        Back
+      </button>
     </div>
   );
 }
