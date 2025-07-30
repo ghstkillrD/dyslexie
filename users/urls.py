@@ -1,5 +1,5 @@
 from django.urls import path, include
-from .views import UserListCreateView, RegisterView, StudentViewSet, StudentUserLinkViewSet, AnalyzeHandwritingView, EvaluateTasksView, FinalDiagnosisView
+from .views import UserListCreateView, RegisterView, StudentViewSet, StudentUserLinkViewSet, AnalyzeHandwritingView, EvaluateTasksView, FinalDiagnosisView, MyTokenObtainPairView
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
@@ -10,10 +10,10 @@ router.register(r'student-links', StudentUserLinkViewSet, basename='student-link
 urlpatterns = [
     path('', UserListCreateView.as_view(), name='user-list-create'),
     path('register/', RegisterView.as_view(), name='register'),
-    path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('token/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('', include(router.urls)),
-    path('analyze-handwriting/', AnalyzeHandwritingView.as_view(), name='analyze-handwriting'),
+    path('students/<int:student_id>/analyze-handwriting/', AnalyzeHandwritingView.as_view(), name='analyze-handwriting'),
     path('evaluate-tasks/', EvaluateTasksView.as_view(), name='evaluate-tasks'),
     path('final-diagnosis/', FinalDiagnosisView.as_view(), name='final-diagnosis'),
 ]

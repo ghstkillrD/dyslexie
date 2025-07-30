@@ -2,12 +2,14 @@ from rest_framework import generics, status, viewsets, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import User, Student, StudentUserLink, StageProgress
-from .serializers import UserSerializer, RegisterSerializer, StudentSerializer, StudentUserLinkSerializer, LinkedUserSerializer
+from .serializers import UserSerializer, RegisterSerializer, StudentSerializer, StudentUserLinkSerializer, LinkedUserSerializer, MyTokenObtainPairSerializer
 from rest_framework.permissions import IsAuthenticated
 from .permissions import IsTeacherOrReadOnly, IsLinkedDoctorOrParentReadOnly
 from rest_framework.decorators import action
 import requests
 from django.core.files.uploadedfile import InMemoryUploadedFile
+from django.shortcuts import get_object_or_404
+from rest_framework_simplejwt.views import TokenObtainPairView
 
 class UserListCreateView(generics.ListCreateAPIView):
     queryset = User.objects.all()
@@ -71,10 +73,47 @@ class StudentViewSet(viewsets.ModelViewSet):
     def complete_stage(self, request, pk=None):
         student = self.get_object()
         progress = StageProgress.objects.get(student=student)
-        progress.current_stage += 1
-        progress.completed_stages.append(progress.current_stage - 1)
+        user = request.user
+
+        current_stage = progress.current_stage
+
+        # Role-based access control per stage
+        stage_roles = {
+            1: 'teacher',
+            2: 'doctor',
+            3: 'teacher',
+            4: 'doctor',
+            5: 'doctor',
+            6: ['teacher', 'parent'],  # multiple roles allowed
+            7: 'doctor'
+        }
+
+        allowed_roles = stage_roles.get(current_stage)
+        if isinstance(allowed_roles, list):
+            if user.role not in allowed_roles:
+                return Response({"error": "You are not allowed to complete this stage."}, status=403)
+        else:
+            if user.role != allowed_roles:
+                return Response({"error": "You are not allowed to complete this stage."}, status=403)
+
+        # Prevent re-completion of the same stage
+        if current_stage in progress.completed_stages:
+            return Response({"error": "This stage has already been completed."}, status=400)
+
+        # Mark current stage as completed
+        progress.completed_stages.append(current_stage)
+
+        # Advance to next stage (if not already at Stage 7)
+        if current_stage < 7:
+            progress.current_stage += 1
+
         progress.save()
-        return Response({'status': 'stage advanced', 'current_stage': progress.current_stage})
+
+        return Response({
+            'status': 'stage completed',
+            'current_stage': progress.current_stage,
+            'completed_stages': progress.completed_stages
+        }, status=200)
 
 class StudentUserLinkViewSet(viewsets.ModelViewSet):
     queryset = StudentUserLink.objects.all()
@@ -93,7 +132,9 @@ class StudentUserLinkViewSet(viewsets.ModelViewSet):
 class AnalyzeHandwritingView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    def post(self, request):
+    def post(self, request, student_id):
+        student = get_object_or_404(Student, pk=student_id)
+
         image = request.FILES.get('image')
         if not image:
             return Response({"error": "No image uploaded"}, status=status.HTTP_400_BAD_REQUEST)
@@ -113,6 +154,20 @@ class AnalyzeHandwritingView(APIView):
                 return Response(response.json())
             else:
                 return Response({"error": "ML service error", "detail": response.text}, status=response.status_code)
+
+            data = response.json()
+
+            # Save to DB
+            sample = HandwritingSample.objects.create(
+                student=student,
+                image=image,
+                dyslexia_score=data.get('dyslexia_score'),
+                interpretation=data.get('interpretation'),
+                letter_counts=data.get('letter_counts'),
+            )
+
+            return Response(HandwritingSampleSerializer(sample).data, status=status.HTTP_201_CREATED)
+        
         except requests.exceptions.RequestException as e:
             return Response({"error": "ML service unreachable", "detail": str(e)}, status=500)
 
@@ -147,3 +202,6 @@ class FinalDiagnosisView(APIView):
                 {"error": "FastAPI service unreachable", "detail": str(e)},
                 status=500
             )
+
+class MyTokenObtainPairView(TokenObtainPairView):
+    serializer_class = MyTokenObtainPairSerializer

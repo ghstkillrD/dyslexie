@@ -1,15 +1,27 @@
 import { useParams } from 'react-router-dom'
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { jwtDecode } from 'jwt-decode';
 
 export default function StudentProgressWindow() {
   const { student_id } = useParams()
   const [currentStage, setCurrentStage] = useState(1);
   const [student, setStudent] = useState(null);
   const [progress, setProgress] = useState({ current_stage: 1, completed_stages: [] });
+  const [userRole, setUserRole] = useState(null);
+
+  // Stage 1 state
+  const [image, setImage] = useState(null);
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [nextLoading, setNextLoading] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
+    if (token) {
+      const decoded = jwtDecode(token);
+      setUserRole(decoded.role);
+    }
     axios.get(`http://127.0.0.1:8000/api/users/students/${student_id}/`, {
       headers: { Authorization: `Bearer ${token}` }
     })
@@ -38,6 +50,17 @@ export default function StudentProgressWindow() {
     "Stage 7: Evaluation Summary"
   ];
 
+  // Allowed roles per stage
+  const stageRoles = {
+    1: ['teacher'],
+    2: ['doctor'],
+    3: ['teacher'],
+    4: ['doctor'],
+    5: ['doctor'],
+    6: ['teacher', 'parent'],
+    7: ['doctor']
+  };
+
   const handleStageClick = (index) => {
     const stageNumber = index + 1;
     if (stageNumber <= progress.current_stage) {
@@ -47,6 +70,63 @@ export default function StudentProgressWindow() {
 
   const isLocked = (index) => index + 1 > progress.current_stage;
   const isCompleted = (index) => progress.completed_stages.includes(index + 1);
+
+  const canEditStage = (stageNumber) => {
+    const allowed = stageRoles[stageNumber] || [];
+    return allowed.includes(userRole);
+  };
+
+  // Upload handwriting sample to backend
+  const handleUpload = async () => {
+    if (!image) return;
+    setLoading(true);
+    const token = localStorage.getItem('token');
+    const formData = new FormData();
+    formData.append('image', image);
+
+    try {
+      const res = await axios.post(
+        `http://127.0.0.1:8000/api/users/students/${student_id}/analyze-handwriting/`,
+        formData,
+        { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }}
+      );
+      setResult(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClear = () => {
+    setImage(null);
+    setResult(null);
+  };
+
+  // Call backend to complete current stage and advance
+  const handleNext = async () => {
+    setNextLoading(true);
+    const token = localStorage.getItem('token');
+
+    try {
+      const res = await axios.post(
+        `http://127.0.0.1:8000/api/users/students/${student_id}/complete_stage/`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+
+      setProgress({
+        current_stage: res.data.current_stage,
+        completed_stages: res.data.completed_stages
+      });
+      setCurrentStage(res.data.current_stage);
+
+    } catch (err) {
+      console.error(err.response?.data || err);
+    } finally {
+      setNextLoading(false);
+    }
+  };
 
  return (
     <div className="p-6">
@@ -78,13 +158,63 @@ export default function StudentProgressWindow() {
           </p>
         )}
 
+        {/* Role-based message */}
+        {!canEditStage(currentStage) && !isCompleted(currentStage - 1) && currentStage === progress.current_stage && (
+          <p className="text-orange-500 mt-2">
+            This stage is to be completed by the {stageRoles[currentStage].join('/')} of this student.
+          </p>
+        )}
+
         {isCompleted(currentStage - 1) && currentStage !== progress.current_stage && (
           <p className="text-green-500 mt-2">
             This stage has been completed (view-only).
           </p>
         )}
 
-        <p className="text-gray-500 mt-2">Stage {currentStage} content goes here.</p>
+        {/* Stage 1 UI */}
+        {currentStage === 1 && !isLocked(0) && (
+          <div className="mt-4">
+            <input
+              type="file"
+              onChange={e => setImage(e.target.files[0])} 
+              disabled={!canEditStage(1) || isCompleted(0)} />
+            <div className="mt-2 space-x-2">
+              <button
+                onClick={handleUpload}
+                className="bg-blue-500 text-white px-3 py-1 rounded"
+                disabled={loading || !canEditStage(1) || isCompleted(0)}
+              >
+                {loading ? "Analyzing..." : "Submit"}
+              </button>
+              <button
+                onClick={handleClear}
+                className="bg-gray-400 text-white px-3 py-1 rounded"
+                disabled={loading || !canEditStage(1) || isCompleted(0)}
+              >
+                Clear
+              </button>
+              <button
+                onClick={handleNext}
+                className="bg-green-500 text-white px-3 py-1 rounded"
+                disabled={!result || nextLoading || !canEditStage(1) || isCompleted(0)}
+              >
+                {nextLoading ? "Saving..." : "Next"}
+              </button>
+            </div>
+
+            {result && (
+              <div className="mt-4 p-3 bg-gray-100 rounded">
+                <p><strong>Dyslexia Score:</strong> {result.dyslexia_score}</p>
+                <p><strong>Interpretation:</strong> {result.interpretation}</p>
+                <p><strong>Letter Counts:</strong> {JSON.stringify(result.letter_counts)}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {currentStage !== 1 && (
+          <p className="text-gray-500 mt-2">Stage {currentStage} content goes here.</p>
+        )}
       </div>
     </div>
   );

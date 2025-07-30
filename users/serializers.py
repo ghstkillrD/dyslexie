@@ -1,6 +1,7 @@
 from rest_framework import serializers
-from .models import User, Student, StudentUserLink, StageProgress
+from .models import User, Student, StudentUserLink, StageProgress, HandwritingSample
 from django.contrib.auth.password_validation import validate_password
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -104,4 +105,18 @@ class LinkedUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'role']
+
+class HandwritingSampleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = HandwritingSample
+        fields = '__all__'
+        read_only_fields = ['uploaded_at']
+
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token['role'] = user.role
+        token['username'] = user.username
+        return token
 
