@@ -2,7 +2,7 @@ from rest_framework import generics, status, viewsets, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import User, Student, StudentUserLink, StageProgress, HandwritingSample
-from .serializers import UserSerializer, RegisterSerializer, StudentSerializer, StudentUserLinkSerializer, LinkedUserSerializer, MyTokenObtainPairSerializer, HandwritingSampleSerializer
+from .serializers import UserSerializer, RegisterSerializer, StudentSerializer, StudentUserLinkSerializer, LinkedUserSerializer, MyTokenObtainPairSerializer, HandwritingSampleSerializer, StudentTaskSerializer
 from rest_framework.permissions import IsAuthenticated
 from .permissions import IsTeacherOrReadOnly, IsLinkedDoctorOrParentReadOnly
 from rest_framework.decorators import action
@@ -114,6 +114,32 @@ class StudentViewSet(viewsets.ModelViewSet):
             'current_stage': progress.current_stage,
             'completed_stages': progress.completed_stages
         }, status=200)
+    
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def add_tasks(self, request, pk=None):
+        """
+        Stage 2: Doctor defines tasks and max score
+        """
+        student = self.get_object()
+
+        # Only allow doctor linked to student
+        if request.user.role != 'doctor':
+            return Response({"error": "Only doctors can define tasks."}, status=403)
+
+        tasks_data = request.data.get('tasks', [])
+        if not tasks_data:
+            return Response({"error": "No tasks provided."}, status=400)
+
+        created_tasks = []
+        for task in tasks_data:
+            serializer = StudentTaskSerializer(data=task)
+            if serializer.is_valid():
+                serializer.save(student=student)
+                created_tasks.append(serializer.data)
+            else:
+                return Response(serializer.errors, status=400)
+
+        return Response({"message": "Tasks added", "tasks": created_tasks}, status=201)
 
 class StudentUserLinkViewSet(viewsets.ModelViewSet):
     queryset = StudentUserLink.objects.all()

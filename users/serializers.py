@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Student, StudentUserLink, StageProgress, HandwritingSample
+from .models import User, Student, StudentUserLink, StageProgress, HandwritingSample, StudentTask
 from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
@@ -119,4 +119,10 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         token['role'] = user.role
         token['username'] = user.username
         return token
+
+class StudentTaskSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StudentTask
+        fields = ['id', 'student', 'task_name', 'max_score', 'score_obtained']
+        read_only_fields = ['id', 'student', 'score_obtained']
 

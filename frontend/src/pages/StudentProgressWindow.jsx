@@ -10,13 +10,18 @@ export default function StudentProgressWindow() {
   const [student, setStudent] = useState(null);
   const [progress, setProgress] = useState({ current_stage: 1, completed_stages: [] });
   const [userRole, setUserRole] = useState(null);
-    const navigate = useNavigate()
+  const navigate = useNavigate()
 
   // Stage 1 state
   const [image, setImage] = useState(null);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [nextLoading, setNextLoading] = useState(false);
+
+   // Stage 2 state
+  const [outOfMark, setOutOfMark] = useState("");
+  const [tasks, setTasks] = useState([]);
+  const [taskName, setTaskName] = useState("");
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -129,6 +134,49 @@ export default function StudentProgressWindow() {
       setNextLoading(false);
     }
   };
+  
+  const handleAddTask = () => {
+    if (!taskName || !outOfMark) return;
+    setTasks([...tasks, { task_name: taskName, max_score: parseInt(outOfMark) }]);
+    setTaskName("");
+  };
+
+  const handleClearTasks = () => {
+    setOutOfMark("");
+    setTaskName("");
+    setTasks([]);
+  };
+
+  const handleSaveTasks = async () => {
+    if (!tasks.length) return;
+    setLoading(true);
+    const token = localStorage.getItem('token');
+    try {
+      await axios.post(
+        `http://127.0.0.1:8000/api/users/students/${student_id}/add_tasks/`,
+        { out_of_mark: parseInt(outOfMark), tasks },
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+
+      // Advance to next stage
+      await axios.post(
+        `http://127.0.0.1:8000/api/users/students/${student_id}/complete_stage/`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+
+      setProgress(prev => ({
+        ...prev,
+        current_stage: prev.current_stage + 1,
+        completed_stages: [...prev.completed_stages, currentStage]
+      }));
+      setCurrentStage(currentStage + 1);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
  return (
     <div className="p-6">
@@ -210,6 +258,84 @@ export default function StudentProgressWindow() {
                 <p><strong>Interpretation:</strong> {result.interpretation}</p>
                 <p><strong>Letter Counts:</strong> {JSON.stringify(result.letter_counts)}</p>
               </div>
+            )}
+          </div>
+        )}
+
+        {/* Stage 2: Define Tasks */}
+        {currentStage === 2 && !isLocked(1) && (
+          <div className="mt-4">
+            {userRole !== "doctor" && !isCompleted(1) ? (
+              <p className="text-red-500">
+                This stage is to be completed by the Doctor assigned to {student?.name}.
+              </p>
+            ) : (
+              <>
+                <div className="mb-2">
+                  <label className="block">Out of Mark:</label>
+                  <input
+                    type="number"
+                    value={outOfMark}
+                    onChange={(e) => setOutOfMark(e.target.value)}
+                    disabled={isCompleted(1) || userRole !== "doctor"}
+                    className="border p-1 rounded w-40"
+                  />
+                </div>
+
+                <div className="flex items-center space-x-2 mb-2">
+                  <input
+                    type="text"
+                    placeholder="Task Name"
+                    value={taskName}
+                    onChange={(e) => setTaskName(e.target.value)}
+                    disabled={isCompleted(1) || userRole !== "doctor"}
+                    className="border p-1 rounded flex-1"
+                  />
+                  <button
+                    onClick={handleAddTask}
+                    disabled={!taskName || !outOfMark || isCompleted(1) || userRole !== "doctor"}
+                    className="bg-green-500 text-white px-3 py-1 rounded"
+                  >
+                    Add
+                  </button>
+                </div>
+
+                {tasks.length > 0 && (
+                  <table className="w-full border mt-2">
+                    <thead>
+                      <tr className="bg-gray-200">
+                        <th className="p-2">Task</th>
+                        <th className="p-2">Max Score</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tasks.map((t, i) => (
+                        <tr key={i} className="border-t">
+                          <td className="p-2">{t.task_name}</td>
+                          <td className="p-2">{t.max_score}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+
+                <div className="mt-3 space-x-2">
+                  <button
+                    onClick={handleClearTasks}
+                    disabled={isCompleted(1) || userRole !== "doctor"}
+                    className="bg-gray-400 text-white px-3 py-1 rounded"
+                  >
+                    Clear
+                  </button>
+                  <button
+                    onClick={handleSaveTasks}
+                    disabled={!tasks.length || isCompleted(1) || userRole !== "doctor"}
+                    className="bg-blue-500 text-white px-3 py-1 rounded"
+                  >
+                    {loading ? "Saving..." : "Next"}
+                  </button>
+                </div>
+              </>
             )}
           </div>
         )}

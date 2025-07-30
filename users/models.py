@@ -70,3 +70,13 @@ class StageProgress(models.Model):
 
     def __str__(self):
         return f"{self.student.name} - Stage {self.current_stage}"
+
+class StudentTask(models.Model):
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="tasks")
+    task_name = models.CharField(max_length=255)
+    max_score = models.IntegerField()
+    score_obtained = models.IntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.task_name} ({self.student.name})"
