@@ -1,7 +1,7 @@
 from rest_framework import generics, status, viewsets, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .models import User, Student, StudentUserLink, StageProgress, HandwritingSample
+from .models import User, Student, StudentUserLink, StageProgress, HandwritingSample, StudentTask
 from .serializers import UserSerializer, RegisterSerializer, StudentSerializer, StudentUserLinkSerializer, LinkedUserSerializer, MyTokenObtainPairSerializer, HandwritingSampleSerializer, StudentTaskSerializer
 from rest_framework.permissions import IsAuthenticated
 from .permissions import IsTeacherOrReadOnly, IsLinkedDoctorOrParentReadOnly
@@ -140,6 +140,54 @@ class StudentViewSet(viewsets.ModelViewSet):
                 return Response(serializer.errors, status=400)
 
         return Response({"message": "Tasks added", "tasks": created_tasks}, status=201)
+
+    @action(detail=True, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def get_tasks(self, request, pk=None):
+        """
+        Get all tasks for a student
+        """
+        student = self.get_object()
+        tasks = student.tasks.all()
+        serializer = StudentTaskSerializer(tasks, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def score_tasks(self, request, pk=None):
+        """
+        Stage 3: Teacher assigns scores to tasks
+        """
+        student = self.get_object()
+
+        # Only allow teacher who owns the student
+        if request.user.role != 'teacher' or student.teacher != request.user:
+            return Response({"error": "Only the assigned teacher can score tasks."}, status=403)
+
+        task_scores = request.data.get('task_scores', [])
+        if not task_scores:
+            return Response({"error": "No task scores provided."}, status=400)
+
+        updated_tasks = []
+        for score_data in task_scores:
+            task_id = score_data.get('task_id')
+            score = score_data.get('score')
+            
+            try:
+                task = student.tasks.get(id=task_id)
+                
+                # Validate score is within max_score
+                if score < 0 or score > task.max_score:
+                    return Response({
+                        "error": f"Score {score} for task '{task.task_name}' must be between 0 and {task.max_score}"
+                    }, status=400)
+                
+                task.score_obtained = score
+                task.save()
+                updated_tasks.append(StudentTaskSerializer(task).data)
+                
+            except student.tasks.model.DoesNotExist:
+                return Response({"error": f"Task with id {task_id} not found for this student."}, status=404)
+
+        return Response({"message": "Task scores updated", "tasks": updated_tasks}, status=200)
 
 class StudentUserLinkViewSet(viewsets.ModelViewSet):
     queryset = StudentUserLink.objects.all()

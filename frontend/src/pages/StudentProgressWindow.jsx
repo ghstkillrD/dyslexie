@@ -4,6 +4,7 @@ import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 import Stage1 from '../components/spw_stages/Stage1';
 import Stage2 from '../components/spw_stages/Stage2';
+import Stage3 from '../components/spw_stages/Stage3';
 
 export default function StudentProgressWindow() {
   const { student_id } = useParams()
@@ -140,6 +141,16 @@ export default function StudentProgressWindow() {
             student_id={student_id}
             canEdit={canEditStage(2)}
             isCompleted={isCompleted(1)}
+            onComplete={handleStageComplete}
+          />
+        )}
+
+        {/* Stage 3: Assign Marks */}
+        {currentStage === 3 && !isLocked(2) && (
+          <Stage3
+            student_id={student_id}
+            canEdit={canEditStage(3)}
+            isCompleted={isCompleted(2)}
             onComplete={handleStageComplete}
           />
         )}
