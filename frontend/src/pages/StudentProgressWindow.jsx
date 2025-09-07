@@ -7,6 +7,7 @@ import Stage2 from '../components/spw_stages/Stage2';
 import Stage3 from '../components/spw_stages/Stage3';
 import Stage4 from '../components/spw_stages/Stage4';
 import Stage5 from '../components/spw_stages/Stage5';
+import Stage6 from '../components/spw_stages/Stage6';
 
 export default function StudentProgressWindow() {
   const { student_id } = useParams()
@@ -173,6 +174,16 @@ export default function StudentProgressWindow() {
             student_id={student_id}
             canEdit={canEditStage(5)}
             isCompleted={isCompleted(4)}
+            onComplete={handleStageComplete}
+          />
+        )}
+
+        {/* Stage 6: Activity Tracking */}
+        {currentStage === 6 && !isLocked(5) && (
+          <Stage6
+            student_id={student_id}
+            canEdit={canEditStage(6)}
+            isCompleted={isCompleted(5)}
             onComplete={handleStageComplete}
           />
         )}

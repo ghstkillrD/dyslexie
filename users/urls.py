@@ -1,7 +1,9 @@
 from django.urls import path, include
 from .views import (UserListCreateView, RegisterView, StudentViewSet, StudentUserLinkViewSet, 
                    AnalyzeHandwritingView, EvaluateTasksView, FinalDiagnosisView, MyTokenObtainPairView,
-                   MyTokenRefreshView, TokenValidateView, ExtendSessionView)
+                   MyTokenRefreshView, TokenValidateView, ExtendSessionView,
+                   get_student_activities_for_tracking, record_activity_progress, 
+                   get_activity_progress_history, update_activity_progress)
 from rest_framework.routers import DefaultRouter
 
 router = DefaultRouter()
@@ -19,4 +21,10 @@ urlpatterns = [
     path('students/<int:student_id>/analyze-handwriting/', AnalyzeHandwritingView.as_view(), name='analyze-handwriting'),
     path('evaluate-tasks/', EvaluateTasksView.as_view(), name='evaluate-tasks'),
     path('final-diagnosis/', FinalDiagnosisView.as_view(), name='final-diagnosis'),
+    
+    # Stage 6: Activity Tracking URLs
+    path('students/<int:student_id>/activities/tracking/', get_student_activities_for_tracking, name='student-activities-tracking'),
+    path('students/<int:student_id>/activities/progress/', record_activity_progress, name='record-activity-progress'),
+    path('students/<int:student_id>/activities/<int:activity_id>/history/', get_activity_progress_history, name='activity-progress-history'),
+    path('activities/progress/<int:progress_id>/', update_activity_progress, name='update-activity-progress'),
 ]

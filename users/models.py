@@ -166,3 +166,47 @@ class ActivityAssignment(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+
+
+class ActivityProgress(models.Model):
+    STATUS_CHOICES = (
+        ('not_started', 'Not Started'),
+        ('in_progress', 'In Progress'),
+        ('completed', 'Completed'),
+        ('missed', 'Missed Session'),
+        ('paused', 'Paused'),
+    )
+
+    PERFORMER_CHOICES = (
+        ('teacher', 'Teacher'),
+        ('parent', 'Parent'),
+    )
+
+    activity_assignment = models.ForeignKey(ActivityAssignment, on_delete=models.CASCADE, related_name='progress_records')
+    recorder = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='recorded_progress')
+    
+    # Session details
+    session_date = models.DateField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='not_started')
+    performer = models.CharField(max_length=10, choices=PERFORMER_CHOICES)
+    duration_actual = models.IntegerField(help_text="Actual duration in minutes", null=True, blank=True)
+    
+    # Progress tracking
+    completion_percentage = models.IntegerField(default=0, help_text="Completion percentage (0-100)")
+    notes = models.TextField(blank=True, help_text="Session notes and observations")
+    challenges = models.TextField(blank=True, help_text="Any challenges encountered")
+    improvements = models.TextField(blank=True, help_text="Observed improvements")
+    
+    # Quality assessment
+    student_engagement = models.IntegerField(default=5, help_text="Student engagement level (1-10)")
+    difficulty_level = models.IntegerField(default=5, help_text="Perceived difficulty for student (1-10)")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.activity_assignment.activity_name} - {self.session_date} ({self.status})"
+
+    class Meta:
+        ordering = ['-session_date']
+        unique_together = ['activity_assignment', 'session_date', 'performer']

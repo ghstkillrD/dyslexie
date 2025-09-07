@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Student, StudentUserLink, StageProgress, HandwritingSample, StudentTask, AssessmentSummary, ActivityAssignment
+from .models import User, Student, StudentUserLink, StageProgress, HandwritingSample, StudentTask, AssessmentSummary, ActivityAssignment, ActivityProgress
 from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
@@ -147,4 +147,28 @@ class ActivityAssignmentSerializer(serializers.ModelSerializer):
             'is_active', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'student', 'doctor', 'created_at', 'updated_at']
+
+
+class ActivityProgressSerializer(serializers.ModelSerializer):
+    activity_assignment = ActivityAssignmentSerializer(read_only=True)
+    
+    class Meta:
+        model = ActivityProgress
+        fields = [
+            'id', 'activity_assignment', 'recorder', 'session_date', 'status',
+            'performer', 'duration_actual', 'completion_percentage', 'notes',
+            'challenges', 'improvements', 'student_engagement', 'difficulty_level',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'recorder', 'created_at', 'updated_at']
+
+
+class ActivityProgressCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ActivityProgress
+        fields = [
+            'activity_assignment', 'session_date', 'status', 'performer',
+            'duration_actual', 'completion_percentage', 'notes', 'challenges',
+            'improvements', 'student_engagement', 'difficulty_level'
+        ]
 

@@ -1,8 +1,9 @@
 from rest_framework import generics, status, viewsets, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .models import User, Student, StudentUserLink, StageProgress, HandwritingSample, StudentTask, AssessmentSummary, ActivityAssignment
-from .serializers import UserSerializer, RegisterSerializer, StudentSerializer, StudentUserLinkSerializer, LinkedUserSerializer, MyTokenObtainPairSerializer, HandwritingSampleSerializer, StudentTaskSerializer, AssessmentSummarySerializer, ActivityAssignmentSerializer
+from rest_framework.decorators import api_view, permission_classes
+from .models import User, Student, StudentUserLink, StageProgress, HandwritingSample, StudentTask, AssessmentSummary, ActivityAssignment, ActivityProgress
+from .serializers import UserSerializer, RegisterSerializer, StudentSerializer, StudentUserLinkSerializer, LinkedUserSerializer, MyTokenObtainPairSerializer, HandwritingSampleSerializer, StudentTaskSerializer, AssessmentSummarySerializer, ActivityAssignmentSerializer, ActivityProgressSerializer, ActivityProgressCreateSerializer
 from rest_framework.permissions import IsAuthenticated
 from .permissions import IsTeacherOrReadOnly, IsLinkedDoctorOrParentReadOnly
 from rest_framework.decorators import action
@@ -366,6 +367,170 @@ class StudentViewSet(viewsets.ModelViewSet):
                 "activity": serializer.data
             })
         return Response(serializer.errors, status=400)
+
+
+# Stage 6: Activity Tracking Views
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_student_activities_for_tracking(request, student_id):
+    """
+    Get activities assigned to a student for tracking (Stage 6)
+    Accessible by teachers and parents
+    """
+    try:
+        student = Student.objects.get(student_id=student_id)
+    except Student.DoesNotExist:
+        return Response({"error": "Student not found"}, status=404)
+
+    # Check if user has access to this student
+    user_role = request.user.role
+    has_access = False
+    
+    if user_role == 'teacher':
+        has_access = student.teacher == request.user
+    elif user_role == 'parent':
+        has_access = StudentUserLink.objects.filter(student=student, user=request.user).exists()
+    elif user_role == 'doctor':
+        # Doctors can view activities they assigned to the student
+        has_access = ActivityAssignment.objects.filter(student=student, doctor=request.user).exists()
+    
+    if not has_access:
+        return Response({"error": "You don't have access to this student"}, status=403)
+
+    # Get active activities for this student
+    activities = student.activity_assignments.filter(is_active=True)
+    
+    # If user is a doctor, only show activities they assigned
+    if user_role == 'doctor':
+        activities = activities.filter(doctor=request.user)
+    
+    # Get progress records for each activity
+    activities_with_progress = []
+    for activity in activities:
+        progress_records = ActivityProgress.objects.filter(activity_assignment=activity)
+        activity_data = ActivityAssignmentSerializer(activity).data
+        activity_data['progress_records'] = ActivityProgressSerializer(progress_records, many=True).data
+        activity_data['total_sessions'] = progress_records.count()
+        activity_data['completed_sessions'] = progress_records.filter(status='completed').count()
+        activities_with_progress.append(activity_data)
+
+    return Response({
+        "student": StudentSerializer(student).data,
+        "activities": activities_with_progress
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def record_activity_progress(request, student_id):
+    """
+    Record progress for an activity session (Stage 6)
+    Accessible by teachers and parents
+    """
+    try:
+        student = Student.objects.get(student_id=student_id)
+    except Student.DoesNotExist:
+        return Response({"error": "Student not found"}, status=404)
+
+    # Check if user has access to this student
+    user_role = request.user.role
+    has_access = False
+    
+    if user_role == 'teacher':
+        has_access = student.teacher == request.user
+        performer = 'teacher'
+    elif user_role == 'parent':
+        has_access = StudentUserLink.objects.filter(student=student, user=request.user).exists()
+        performer = 'parent'
+    else:
+        return Response({"error": "Only teachers and parents can record activity progress"}, status=403)
+    
+    if not has_access:
+        return Response({"error": "You don't have access to this student"}, status=403)
+
+    # Validate activity assignment exists
+    activity_id = request.data.get('activity_assignment')
+    try:
+        activity = ActivityAssignment.objects.get(id=activity_id, student=student)
+    except ActivityAssignment.DoesNotExist:
+        return Response({"error": "Activity assignment not found"}, status=404)
+
+    # Prepare data with performer and recorder
+    progress_data = request.data.copy()
+    progress_data['performer'] = performer
+
+    serializer = ActivityProgressCreateSerializer(data=progress_data)
+    if serializer.is_valid():
+        progress = serializer.save(recorder=request.user)
+        
+        return Response({
+            "message": "Activity progress recorded successfully",
+            "progress": ActivityProgressSerializer(progress).data
+        }, status=201)
+    
+    return Response(serializer.errors, status=400)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_activity_progress_history(request, student_id, activity_id):
+    """
+    Get progress history for a specific activity
+    """
+    try:
+        student = Student.objects.get(student_id=student_id)
+        activity = ActivityAssignment.objects.get(id=activity_id, student=student)
+    except (Student.DoesNotExist, ActivityAssignment.DoesNotExist):
+        return Response({"error": "Student or activity not found"}, status=404)
+
+    # Check access permissions
+    user_role = request.user.role
+    has_access = False
+    
+    if user_role == 'teacher':
+        has_access = student.teacher == request.user
+    elif user_role == 'parent':
+        has_access = StudentUserLink.objects.filter(student=student, user=request.user).exists()
+    elif user_role == 'doctor':
+        has_access = activity.doctor == request.user
+    
+    if not has_access:
+        return Response({"error": "You don't have access to this activity"}, status=403)
+
+    progress_records = ActivityProgress.objects.filter(activity_assignment=activity)
+    
+    return Response({
+        "activity": ActivityAssignmentSerializer(activity).data,
+        "progress_history": ActivityProgressSerializer(progress_records, many=True).data
+    })
+
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def update_activity_progress(request, progress_id):
+    """
+    Update an existing activity progress record
+    """
+    try:
+        progress = ActivityProgress.objects.get(id=progress_id)
+    except ActivityProgress.DoesNotExist:
+        return Response({"error": "Progress record not found"}, status=404)
+
+    # Only allow the recorder to update their own records
+    if request.user != progress.recorder:
+        return Response({"error": "You can only update your own progress records"}, status=403)
+
+    serializer = ActivityProgressCreateSerializer(progress, data=request.data, partial=True)
+    if serializer.is_valid():
+        serializer.save()
+        updated_progress = ActivityProgress.objects.get(id=progress_id)
+        return Response({
+            "message": "Progress record updated successfully",
+            "progress": ActivityProgressSerializer(updated_progress).data
+        })
+    
+    return Response(serializer.errors, status=400)
+
 
 class StudentUserLinkViewSet(viewsets.ModelViewSet):
     queryset = StudentUserLink.objects.all()
