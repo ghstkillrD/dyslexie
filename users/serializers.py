@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Student, StudentUserLink, StageProgress, HandwritingSample, StudentTask, AssessmentSummary
+from .models import User, Student, StudentUserLink, StageProgress, HandwritingSample, StudentTask, AssessmentSummary, ActivityAssignment
 from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
@@ -134,6 +134,17 @@ class AssessmentSummarySerializer(serializers.ModelSerializer):
             'total_max_score', 'percentage_score', 'risk_level', 
             'dyslexia_indication', 'summary_notes', 'recommendations',
             'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'student', 'doctor', 'created_at', 'updated_at']
+
+class ActivityAssignmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ActivityAssignment
+        fields = [
+            'id', 'student', 'doctor', 'activity_name', 'activity_type', 
+            'description', 'instructions', 'frequency', 'duration_minutes',
+            'target_audience', 'expected_outcomes', 'success_criteria',
+            'is_active', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'student', 'doctor', 'created_at', 'updated_at']
 

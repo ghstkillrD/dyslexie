@@ -112,3 +112,57 @@ class AssessmentSummary(models.Model):
 
     def __str__(self):
         return f"Assessment for {self.student.name} - {self.risk_level} risk"
+
+class ActivityAssignment(models.Model):
+    ACTIVITY_TYPE_CHOICES = (
+        ('reading', 'Reading Exercise'),
+        ('writing', 'Writing Practice'),
+        ('phonics', 'Phonics Training'),
+        ('memory', 'Memory Enhancement'),
+        ('coordination', 'Hand-Eye Coordination'),
+        ('visual', 'Visual Processing'),
+        ('auditory', 'Auditory Processing'),
+        ('cognitive', 'Cognitive Training'),
+    )
+
+    FREQUENCY_CHOICES = (
+        ('daily', 'Daily'),
+        ('weekly', 'Weekly'),
+        ('bi-weekly', 'Twice a Week'),
+        ('monthly', 'Monthly'),
+    )
+
+    TARGET_AUDIENCE_CHOICES = (
+        ('teacher', 'Teacher Implementation'),
+        ('parent', 'Parent Implementation'),
+        ('both', 'Both Teacher and Parent'),
+    )
+
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='activity_assignments')
+    doctor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='assigned_activities')
+    
+    # Activity details
+    activity_name = models.CharField(max_length=255)
+    activity_type = models.CharField(max_length=20, choices=ACTIVITY_TYPE_CHOICES)
+    description = models.TextField(help_text="Detailed description of the activity")
+    instructions = models.TextField(help_text="Step-by-step instructions for implementation")
+    
+    # Scheduling and targets
+    frequency = models.CharField(max_length=20, choices=FREQUENCY_CHOICES)
+    duration_minutes = models.IntegerField(help_text="Duration of each session in minutes")
+    target_audience = models.CharField(max_length=10, choices=TARGET_AUDIENCE_CHOICES)
+    
+    # Goals and expectations
+    expected_outcomes = models.TextField(help_text="Expected outcomes and improvements")
+    success_criteria = models.TextField(help_text="How to measure success", blank=True)
+    
+    # Tracking
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.activity_name} for {self.student.name}"
+
+    class Meta:
+        ordering = ['-created_at']

@@ -1,8 +1,8 @@
 from rest_framework import generics, status, viewsets, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .models import User, Student, StudentUserLink, StageProgress, HandwritingSample, StudentTask, AssessmentSummary
-from .serializers import UserSerializer, RegisterSerializer, StudentSerializer, StudentUserLinkSerializer, LinkedUserSerializer, MyTokenObtainPairSerializer, HandwritingSampleSerializer, StudentTaskSerializer, AssessmentSummarySerializer
+from .models import User, Student, StudentUserLink, StageProgress, HandwritingSample, StudentTask, AssessmentSummary, ActivityAssignment
+from .serializers import UserSerializer, RegisterSerializer, StudentSerializer, StudentUserLinkSerializer, LinkedUserSerializer, MyTokenObtainPairSerializer, HandwritingSampleSerializer, StudentTaskSerializer, AssessmentSummarySerializer, ActivityAssignmentSerializer
 from rest_framework.permissions import IsAuthenticated
 from .permissions import IsTeacherOrReadOnly, IsLinkedDoctorOrParentReadOnly
 from rest_framework.decorators import action
@@ -279,6 +279,90 @@ class StudentViewSet(viewsets.ModelViewSet):
             "message": status_message,
             "assessment_summary": serializer.data
         }, status=201 if created else 200)
+
+    @action(detail=True, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def get_activity_assignments(self, request, pk=None):
+        """
+        Get all activity assignments for a student
+        """
+        student = self.get_object()
+        activities = student.activity_assignments.all()
+        serializer = ActivityAssignmentSerializer(activities, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def assign_activities(self, request, pk=None):
+        """
+        Stage 5: Doctor assigns therapeutic activities to a student
+        """
+        student = self.get_object()
+
+        # Only allow doctors linked to the student
+        if request.user.role != 'doctor':
+            return Response({"error": "Only doctors can assign activities."}, status=403)
+
+        # Check if doctor is linked to this student
+        if not StudentUserLink.objects.filter(student=student, user=request.user, role='doctor').exists():
+            return Response({"error": "You are not assigned to this student."}, status=403)
+
+        # Check if Stage 4 is completed (assessment summary exists)
+        try:
+            assessment_summary = student.assessment_summary
+        except AssessmentSummary.DoesNotExist:
+            return Response({"error": "Stage 4 must be completed before assigning activities."}, status=400)
+
+        activities_data = request.data.get('activities', [])
+        if not activities_data:
+            return Response({"error": "No activities provided."}, status=400)
+
+        created_activities = []
+        for activity_data in activities_data:
+            # Add student and doctor to the activity data
+            activity_data['student'] = student.pk
+            activity_data['doctor'] = request.user.pk
+            
+            serializer = ActivityAssignmentSerializer(data=activity_data)
+            if serializer.is_valid():
+                activity = serializer.save(student=student, doctor=request.user)
+                created_activities.append(ActivityAssignmentSerializer(activity).data)
+            else:
+                return Response({
+                    "error": f"Invalid activity data: {serializer.errors}"
+                }, status=400)
+
+        return Response({
+            "message": f"Successfully assigned {len(created_activities)} activities",
+            "activities": created_activities
+        }, status=201)
+
+    @action(detail=True, methods=['put'], permission_classes=[permissions.IsAuthenticated])
+    def update_activity(self, request, pk=None):
+        """
+        Update a specific activity assignment
+        """
+        student = self.get_object()
+        activity_id = request.data.get('activity_id')
+        
+        if not activity_id:
+            return Response({"error": "Activity ID is required."}, status=400)
+
+        try:
+            activity = student.activity_assignments.get(id=activity_id)
+        except ActivityAssignment.DoesNotExist:
+            return Response({"error": "Activity not found."}, status=404)
+
+        # Only allow the doctor who assigned the activity to update it
+        if request.user != activity.doctor:
+            return Response({"error": "You can only update activities you assigned."}, status=403)
+
+        serializer = ActivityAssignmentSerializer(activity, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "message": "Activity updated successfully",
+                "activity": serializer.data
+            })
+        return Response(serializer.errors, status=400)
 
 class StudentUserLinkViewSet(viewsets.ModelViewSet):
     queryset = StudentUserLink.objects.all()
