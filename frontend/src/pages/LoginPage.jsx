@@ -21,7 +21,13 @@ export default function LoginPage() {
         username: form.email,
         password: form.password
       })
+      
       const token = res.data.access
+      const refreshToken = res.data.refresh
+      
+      // Store both tokens
+      localStorage.setItem('refresh_token', refreshToken)
+      
       login(token)
       if (role === 'teacher') navigate('/teacher/students')
       else if (role === 'doctor') navigate('/doctor/students')

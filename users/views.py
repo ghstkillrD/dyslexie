@@ -9,7 +9,10 @@ from rest_framework.decorators import action
 import requests
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.shortcuts import get_object_or_404
-from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from datetime import datetime, timezone
 
 class UserListCreateView(generics.ListCreateAPIView):
     queryset = User.objects.all()
@@ -453,3 +456,97 @@ class FinalDiagnosisView(APIView):
 
 class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
+
+class MyTokenRefreshView(TokenRefreshView):
+    """
+    Custom token refresh view that provides additional token information
+    """
+    def post(self, request, *args, **kwargs):
+        try:
+            response = super().post(request, *args, **kwargs)
+            if response.status_code == 200:
+                # Add additional info to response
+                response.data['refreshed_at'] = datetime.now(timezone.utc).isoformat()
+                response.data['message'] = 'Token refreshed successfully'
+            return response
+        except (InvalidToken, TokenError) as e:
+            return Response(
+                {'error': 'Invalid refresh token', 'detail': str(e)},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+class TokenValidateView(APIView):
+    """
+    Validate if the current token is still valid and return time until expiration
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        try:
+            # Get token from request
+            auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+            if not auth_header.startswith('Bearer '):
+                return Response({'error': 'No valid token provided'}, status=400)
+            
+            token = auth_header.split(' ')[1]
+            from rest_framework_simplejwt.tokens import AccessToken
+            
+            # Validate token
+            access_token = AccessToken(token)
+            
+            # Get expiration time
+            exp_timestamp = access_token['exp']
+            exp_datetime = datetime.fromtimestamp(exp_timestamp, tz=timezone.utc)
+            current_time = datetime.now(timezone.utc)
+            
+            # Calculate time until expiration
+            time_until_expiry = exp_datetime - current_time
+            minutes_until_expiry = int(time_until_expiry.total_seconds() / 60)
+            
+            return Response({
+                'valid': True,
+                'expires_at': exp_datetime.isoformat(),
+                'minutes_until_expiry': minutes_until_expiry,
+                'user_id': access_token['user_id'],
+                'current_time': current_time.isoformat()
+            })
+            
+        except Exception as e:
+            return Response({
+                'valid': False,
+                'error': 'Token validation failed',
+                'detail': str(e)
+            }, status=401)
+
+class ExtendSessionView(APIView):
+    """
+    Extend the current session by issuing a new access token
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        try:
+            # Get refresh token from request body
+            refresh_token = request.data.get('refresh_token')
+            if not refresh_token:
+                return Response({'error': 'Refresh token required'}, status=400)
+            
+            # Create new tokens
+            refresh = RefreshToken(refresh_token)
+            new_access_token = refresh.access_token
+            
+            # Update user's last login
+            request.user.last_login = datetime.now(timezone.utc)
+            request.user.save(update_fields=['last_login'])
+            
+            return Response({
+                'access_token': str(new_access_token),
+                'message': 'Session extended successfully',
+                'extended_at': datetime.now(timezone.utc).isoformat()
+            })
+            
+        except Exception as e:
+            return Response({
+                'error': 'Failed to extend session',
+                'detail': str(e)
+            }, status=400)
