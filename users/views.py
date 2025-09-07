@@ -1,8 +1,8 @@
 from rest_framework import generics, status, viewsets, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .models import User, Student, StudentUserLink, StageProgress, HandwritingSample, StudentTask
-from .serializers import UserSerializer, RegisterSerializer, StudentSerializer, StudentUserLinkSerializer, LinkedUserSerializer, MyTokenObtainPairSerializer, HandwritingSampleSerializer, StudentTaskSerializer
+from .models import User, Student, StudentUserLink, StageProgress, HandwritingSample, StudentTask, AssessmentSummary
+from .serializers import UserSerializer, RegisterSerializer, StudentSerializer, StudentUserLinkSerializer, LinkedUserSerializer, MyTokenObtainPairSerializer, HandwritingSampleSerializer, StudentTaskSerializer, AssessmentSummarySerializer
 from rest_framework.permissions import IsAuthenticated
 from .permissions import IsTeacherOrReadOnly, IsLinkedDoctorOrParentReadOnly
 from rest_framework.decorators import action
@@ -188,6 +188,97 @@ class StudentViewSet(viewsets.ModelViewSet):
                 return Response({"error": f"Task with id {task_id} not found for this student."}, status=404)
 
         return Response({"message": "Task scores updated", "tasks": updated_tasks}, status=200)
+
+    @action(detail=True, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def get_assessment_summary(self, request, pk=None):
+        """
+        Get assessment summary for a student (if exists)
+        """
+        student = self.get_object()
+        
+        try:
+            summary = student.assessment_summary
+            serializer = AssessmentSummarySerializer(summary)
+            return Response(serializer.data)
+        except AssessmentSummary.DoesNotExist:
+            return Response({"message": "No assessment summary found"}, status=404)
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def create_assessment_summary(self, request, pk=None):
+        """
+        Stage 4: Doctor creates assessment summary and sets cutoffs
+        """
+        student = self.get_object()
+
+        # Only allow doctors linked to the student
+        if request.user.role != 'doctor':
+            return Response({"error": "Only doctors can create assessment summaries."}, status=403)
+
+        # Check if doctor is linked to this student
+        if not StudentUserLink.objects.filter(student=student, user=request.user, role='doctor').exists():
+            return Response({"error": "You are not assigned to this student."}, status=403)
+
+        # Get task scores from Stage 3
+        tasks = student.tasks.all()
+        if not tasks.exists():
+            return Response({"error": "No tasks found for this student."}, status=400)
+
+        # Check if all tasks have been scored
+        unscored_tasks = tasks.filter(score_obtained__isnull=True)
+        if unscored_tasks.exists():
+            return Response({"error": "Not all tasks have been scored yet."}, status=400)
+
+        # Calculate totals
+        total_score = sum(task.score_obtained for task in tasks if task.score_obtained is not None)
+        total_max_score = sum(task.max_score for task in tasks)
+        percentage_score = (total_score / total_max_score) * 100 if total_max_score > 0 else 0
+
+        # Get cutoff and analysis from request
+        cutoff_percentage = request.data.get('cutoff_percentage')
+        summary_notes = request.data.get('summary_notes', '')
+        recommendations = request.data.get('recommendations', '')
+
+        if cutoff_percentage is None:
+            return Response({"error": "Cutoff percentage is required."}, status=400)
+
+        try:
+            cutoff_percentage = float(cutoff_percentage)
+        except ValueError:
+            return Response({"error": "Invalid cutoff percentage."}, status=400)
+
+        # Determine risk level and dyslexia indication
+        dyslexia_indication = percentage_score < cutoff_percentage
+        
+        if percentage_score >= cutoff_percentage:
+            risk_level = 'low'
+        elif percentage_score >= (cutoff_percentage - 10):
+            risk_level = 'medium'
+        else:
+            risk_level = 'high'
+
+        # Create or update assessment summary
+        summary, created = AssessmentSummary.objects.update_or_create(
+            student=student,
+            defaults={
+                'doctor': request.user,
+                'cutoff_percentage': cutoff_percentage,
+                'total_score': total_score,
+                'total_max_score': total_max_score,
+                'percentage_score': percentage_score,
+                'risk_level': risk_level,
+                'dyslexia_indication': dyslexia_indication,
+                'summary_notes': summary_notes,
+                'recommendations': recommendations,
+            }
+        )
+
+        serializer = AssessmentSummarySerializer(summary)
+        status_message = "Assessment summary created" if created else "Assessment summary updated"
+        
+        return Response({
+            "message": status_message,
+            "assessment_summary": serializer.data
+        }, status=201 if created else 200)
 
 class StudentUserLinkViewSet(viewsets.ModelViewSet):
     queryset = StudentUserLink.objects.all()

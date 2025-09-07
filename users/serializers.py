@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Student, StudentUserLink, StageProgress, HandwritingSample, StudentTask
+from .models import User, Student, StudentUserLink, StageProgress, HandwritingSample, StudentTask, AssessmentSummary
 from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
@@ -63,12 +63,12 @@ class StudentSerializer(serializers.ModelSerializer):
         # Link doctors
         doctor_users = User.objects.filter(email__in=doctor_emails, role='doctor')
         for doctor in doctor_users:
-            StudentUserLink.objects.create(student=student, user=doctor)
+            StudentUserLink.objects.create(student=student, user=doctor, role='doctor')
 
         # Link parents
         parent_users = User.objects.filter(email__in=parent_emails, role='parent')
         for parent in parent_users:
-            StudentUserLink.objects.create(student=student, user=parent)
+            StudentUserLink.objects.create(student=student, user=parent, role='parent')
 
         return student
 
@@ -87,12 +87,12 @@ class StudentSerializer(serializers.ModelSerializer):
         # Re-link doctors
         doctor_users = User.objects.filter(email__in=doctor_emails, role='doctor')
         for doctor in doctor_users:
-            StudentUserLink.objects.create(student=instance, user=doctor)
+            StudentUserLink.objects.create(student=instance, user=doctor, role='doctor')
 
         # Re-link parents
         parent_users = User.objects.filter(email__in=parent_emails, role='parent')
         for parent in parent_users:
-            StudentUserLink.objects.create(student=instance, user=parent)
+            StudentUserLink.objects.create(student=instance, user=parent, role='parent')
 
         return instance
 
@@ -125,4 +125,15 @@ class StudentTaskSerializer(serializers.ModelSerializer):
         model = StudentTask
         fields = ['id', 'student', 'task_name', 'max_score', 'score_obtained']
         read_only_fields = ['id', 'student', 'score_obtained']
+
+class AssessmentSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AssessmentSummary
+        fields = [
+            'id', 'student', 'doctor', 'cutoff_percentage', 'total_score', 
+            'total_max_score', 'percentage_score', 'risk_level', 
+            'dyslexia_indication', 'summary_notes', 'recommendations',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'student', 'doctor', 'created_at', 'updated_at']
 

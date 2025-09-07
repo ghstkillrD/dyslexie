@@ -80,3 +80,35 @@ class StudentTask(models.Model):
 
     def __str__(self):
         return f"{self.task_name} ({self.student.name})"
+
+class AssessmentSummary(models.Model):
+    RISK_LEVEL_CHOICES = (
+        ('low', 'Low Risk'),
+        ('medium', 'Medium Risk'),
+        ('high', 'High Risk'),
+    )
+
+    student = models.OneToOneField(Student, on_delete=models.CASCADE, related_name='assessment_summary')
+    doctor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='assessments')
+    
+    # Cutoff settings
+    cutoff_percentage = models.FloatField(help_text="Percentage cutoff for dyslexia indication")
+    
+    # Assessment results
+    total_score = models.FloatField()
+    total_max_score = models.FloatField()
+    percentage_score = models.FloatField()
+    
+    # Analysis
+    risk_level = models.CharField(max_length=10, choices=RISK_LEVEL_CHOICES)
+    dyslexia_indication = models.BooleanField(default=False)
+    
+    # Summary and recommendations
+    summary_notes = models.TextField(blank=True)
+    recommendations = models.TextField(blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Assessment for {self.student.name} - {self.risk_level} risk"

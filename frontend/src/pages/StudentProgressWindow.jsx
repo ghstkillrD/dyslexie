@@ -5,6 +5,7 @@ import { jwtDecode } from 'jwt-decode';
 import Stage1 from '../components/spw_stages/Stage1';
 import Stage2 from '../components/spw_stages/Stage2';
 import Stage3 from '../components/spw_stages/Stage3';
+import Stage4 from '../components/spw_stages/Stage4';
 
 export default function StudentProgressWindow() {
   const { student_id } = useParams()
@@ -151,6 +152,16 @@ export default function StudentProgressWindow() {
             student_id={student_id}
             canEdit={canEditStage(3)}
             isCompleted={isCompleted(2)}
+            onComplete={handleStageComplete}
+          />
+        )}
+
+        {/* Stage 4: Cutoff & Summary */}
+        {currentStage === 4 && !isLocked(3) && (
+          <Stage4
+            student_id={student_id}
+            canEdit={canEditStage(4)}
+            isCompleted={isCompleted(3)}
             onComplete={handleStageComplete}
           />
         )}
