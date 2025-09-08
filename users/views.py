@@ -122,6 +122,79 @@ class StudentViewSet(viewsets.ModelViewSet):
         }, status=200)
     
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def terminate_progress(self, request, pk=None):
+        """
+        Completely reset student therapy progress to start fresh from Stage 1.
+        Only accessible by teachers and only after Stage 1 completion.
+        """
+        student = self.get_object()
+        user = request.user
+        
+        # Only allow teachers who own the student
+        if user.role != 'teacher' or student.teacher != user:
+            return Response({"error": "Only the assigned teacher can terminate student progress."}, status=403)
+        
+        # Get current progress
+        try:
+            progress = StageProgress.objects.get(student=student)
+        except StageProgress.DoesNotExist:
+            return Response({"error": "No progress found for this student."}, status=404)
+        
+        # Only allow termination if Stage 1 has been completed
+        if 1 not in progress.completed_stages:
+            return Response({"error": "Progress termination is only available after Stage 1 completion. Student must complete handwriting analysis first."}, status=400)
+        
+        # Confirm termination with additional check
+        confirm_termination = request.data.get('confirm_termination', False)
+        if not confirm_termination:
+            return Response({"error": "Termination must be confirmed by setting 'confirm_termination' to true."}, status=400)
+        
+        try:
+            # Delete ALL therapy-related data to start completely fresh
+            
+            # 1. Delete handwriting samples (Stage 1) - start completely fresh
+            student.handwriting_samples.all().delete()
+            
+            # 2. Reset stage progress completely
+            progress.current_stage = 1
+            progress.completed_stages = []
+            progress.save()
+            
+            # 3. Clear tasks (Stage 2+)
+            student.tasks.all().delete()
+            
+            # 4. Clear assessment summary (Stage 3+)
+            if hasattr(student, 'assessment_summary'):
+                student.assessment_summary.delete()
+            
+            # 5. Clear activity assignments and progress (Stage 4+)
+            student.activity_assignments.all().delete()
+            
+            # 6. Clear final evaluation (Stage 6+)
+            if hasattr(student, 'final_evaluation'):
+                student.final_evaluation.delete()
+            
+            # 7. Clear therapy reports (Stage 7)
+            student.therapy_reports.all().delete()
+            
+            # 8. Clear stakeholder recommendations (Stage 7)
+            student.stakeholder_recommendations.all().delete()
+            
+            return Response({
+                'status': 'progress terminated successfully',
+                'message': 'All therapy progress has been completely reset. Student will start fresh from Stage 1.',
+                'current_stage': progress.current_stage,
+                'completed_stages': progress.completed_stages,
+                'preserved_data': 'Only basic student information (name, birthday, school)'
+            }, status=200)
+            
+        except Exception as e:
+            return Response({
+                'error': 'Failed to terminate progress',
+                'detail': str(e)
+            }, status=500)
+    
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def add_tasks(self, request, pk=None):
         """
         Stage 2: Doctor defines tasks and max score

@@ -88,6 +88,77 @@ export default function StudentProgressWindow() {
     setCurrentStage(data.current_stage);
   };
 
+  const handleTerminateProgress = async () => {
+    // Show detailed confirmation dialog
+    const confirmMessage = 
+      `⚠️ TERMINATE PROGRESS WARNING ⚠️\n\n` +
+      `This will PERMANENTLY delete ALL therapy data for ${student?.name}:\n\n` +
+      `❌ WILL BE COMPLETELY DELETED:\n` +
+      `• Handwriting analysis and images (Stage 1)\n` +
+      `• All tasks and scores (Stage 2+)\n` +
+      `• Assessment summaries (Stage 3+)\n` +
+      `• Activity assignments and progress (Stage 4+)\n` +
+      `• Final evaluations (Stage 6+)\n` +
+      `• Therapy reports (Stage 7)\n` +
+      `• All stakeholder recommendations\n\n` +
+      `✅ WILL BE PRESERVED:\n` +
+      `• Basic student information (name, birthday, school, etc.)\n\n` +
+      `After termination, the student will restart completely from Stage 1.\n\n` +
+      `Are you absolutely sure you want to continue?`;
+
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    // Second confirmation for safety
+    const secondConfirm = window.confirm(
+      `🚨 FINAL CONFIRMATION 🚨\n\nThis action CANNOT be undone.\n\nAll therapy progress will be lost!\n\nClick OK if you're certain you want to start completely fresh from Stage 1.`
+    );
+
+    if (!secondConfirm) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        `http://127.0.0.1:8000/api/users/students/${student_id}/terminate_progress/`,
+        { confirm_termination: true },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      // Update local state
+      setProgress({
+        current_stage: response.data.current_stage,
+        completed_stages: response.data.completed_stages
+      });
+      setCurrentStage(response.data.current_stage);
+
+      // Show success message
+      alert(
+        `✅ Progress Terminated Successfully!\n\n` +
+        `${response.data.message}\n\n` +
+        `Current Stage: ${response.data.current_stage}\n` +
+        `Preserved: ${response.data.preserved_data}`
+      );
+      
+      // Reload to ensure all components refresh with new data
+      window.location.reload();
+
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || 'Failed to terminate progress';
+      const errorDetail = error.response?.data?.detail || '';
+      
+      alert(
+        `❌ Termination Failed\n\n` +
+        `Error: ${errorMessage}\n` +
+        `${errorDetail ? `Details: ${errorDetail}` : ''}`
+      );
+      
+      console.error('Termination error:', error);
+    }
+  };
+
  return (
     <div className="p-6">
       <h2 className="text-2xl font-bold mb-4">
@@ -95,27 +166,41 @@ export default function StudentProgressWindow() {
       </h2>
 
       {/* Tab Navigation */}
-      <div className="flex space-x-2 mb-6 border-b">
-        <button
-          className={`px-4 py-2 font-medium rounded-t-lg ${
-            currentTab === 'stages' 
-              ? 'bg-blue-500 text-white border-b-2 border-blue-500' 
-              : 'bg-gray-200 hover:bg-gray-300'
-          }`}
-          onClick={() => setCurrentTab('stages')}
-        >
-          Assessment Stages
-        </button>
-        <button
-          className={`px-4 py-2 font-medium rounded-t-lg ${
-            currentTab === 'reports' 
-              ? 'bg-blue-500 text-white border-b-2 border-blue-500' 
-              : 'bg-gray-200 hover:bg-gray-300'
-          }`}
-          onClick={() => setCurrentTab('reports')}
-        >
-          Therapy Reports
-        </button>
+      <div className="flex justify-between items-center mb-6 border-b">
+        <div className="flex space-x-2">
+          <button
+            className={`px-4 py-2 font-medium rounded-t-lg ${
+              currentTab === 'stages' 
+                ? 'bg-blue-500 text-white border-b-2 border-blue-500' 
+                : 'bg-gray-200 hover:bg-gray-300'
+            }`}
+            onClick={() => setCurrentTab('stages')}
+          >
+            Assessment Stages
+          </button>
+          <button
+            className={`px-4 py-2 font-medium rounded-t-lg ${
+              currentTab === 'reports' 
+                ? 'bg-blue-500 text-white border-b-2 border-blue-500' 
+                : 'bg-gray-200 hover:bg-gray-300'
+            }`}
+            onClick={() => setCurrentTab('reports')}
+          >
+            Therapy Reports
+          </button>
+        </div>
+
+        {/* Terminate Progress Button - Only visible to teachers and only after Stage 1 completion */}
+        {userRole === 'teacher' && progress.completed_stages.includes(1) && (
+          <button
+            className={`px-4 py-2 font-medium rounded-t-lg bg-red-600 text-white hover:bg-red-700 transition-colors duration-200 flex items-center gap-2`}
+            onClick={handleTerminateProgress}
+            title="Terminate all therapy progress and restart completely from Stage 1"
+          >
+            <span className="text-sm">⚠️</span>
+            Terminate Progress
+          </button>
+        )}
       </div>
 
       {currentTab === 'stages' ? (
