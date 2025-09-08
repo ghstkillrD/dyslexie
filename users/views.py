@@ -907,12 +907,18 @@ def get_evaluation_summary(request, student_id):
         
         # Get stakeholder recommendations for this user
         try:
-            user_recommendation = StakeholderRecommendation.objects.get(
+            # Get the most recent recommendation for the current therapy session
+            user_recommendation = StakeholderRecommendation.objects.filter(
                 student__student_id=student_id,
-                stakeholder=request.user
-            )
-            summary_data['my_recommendation'] = StakeholderRecommendationSerializer(user_recommendation).data
-        except StakeholderRecommendation.DoesNotExist:
+                stakeholder=request.user,
+                therapy_session_number=evaluation.therapy_session_number
+            ).order_by('-submitted_at').first()
+            
+            if user_recommendation:
+                summary_data['my_recommendation'] = StakeholderRecommendationSerializer(user_recommendation).data
+            else:
+                summary_data['my_recommendation'] = None
+        except Exception:
             summary_data['my_recommendation'] = None
             
         return Response(summary_data)
