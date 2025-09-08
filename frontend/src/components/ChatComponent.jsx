@@ -245,16 +245,20 @@ const ChatComponent = ({ studentId, currentUser }) => {
     return url && (url.includes('image') || /\.(jpg|jpeg|png|gif|webp)$/i.test(url));
   };
 
-  if (isLoading) {
+  const isPdfFile = (fileName) => {
+    return fileName && fileName.toLowerCase().endsWith('.pdf');
+  };
+
+  if (isLoading || !currentUser) {
     return (
-      <div className="flex items-center justify-center h-96">
+      <div className="flex items-center justify-center h-[600px] bg-white border rounded-lg">
         <div className="text-gray-500">Loading chat...</div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-96 bg-white border rounded-lg">
+    <div className="flex flex-col h-[600px] bg-white border rounded-lg">
       {/* Chat Header */}
       <div className="flex items-center justify-between p-4 border-b bg-gray-50">
         <div>
@@ -274,14 +278,15 @@ const ChatComponent = ({ studentId, currentUser }) => {
       </div>
 
       {/* Messages Container */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
         {messages.length === 0 ? (
           <div className="text-center text-gray-500 py-8">
             No messages yet. Start the conversation!
           </div>
         ) : (
           messages.map((message, index) => {
-            const isOwnMessage = message.sender.id === currentUser.id;
+            // Convert both IDs to strings for comparison to handle type mismatches
+            const isOwnMessage = String(message.sender.id) === String(currentUser?.id);
             const showDate = index === 0 || 
               formatDate(message.created_at) !== formatDate(messages[index - 1]?.created_at);
 
@@ -295,14 +300,14 @@ const ChatComponent = ({ studentId, currentUser }) => {
                 )}
 
                 {/* Message */}
-                <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-2`}>
+                  <div className={`max-w-xs lg:max-w-md px-4 py-3 rounded-lg shadow-sm ${
                     isOwnMessage 
-                      ? 'bg-blue-500 text-white' 
-                      : 'bg-gray-200 text-gray-800'
+                      ? 'bg-blue-500 text-white rounded-br-sm' 
+                      : 'bg-gray-100 text-gray-800 rounded-bl-sm'
                   }`}>
                     {!isOwnMessage && (
-                      <div className="text-xs font-semibold mb-1">
+                      <div className="text-xs font-semibold mb-2 text-gray-600">
                         {message.sender.username} ({message.sender.role})
                       </div>
                     )}
@@ -312,8 +317,8 @@ const ChatComponent = ({ studentId, currentUser }) => {
                       <div className="whitespace-pre-wrap">{message.content}</div>
                     )}
                     
-                    {/* Image content */}
-                    {message.message_type === 'image' && (
+                    {/* Image content - but check if it's actually a PDF */}
+                    {message.message_type === 'image' && !isPdfFile(message.file_name) && (
                       <div>
                         <img 
                           src={message.file_url} 
@@ -327,22 +332,127 @@ const ChatComponent = ({ studentId, currentUser }) => {
                       </div>
                     )}
                     
-                    {/* File content */}
+                    {/* Handle PDFs that might be incorrectly categorized as images */}
+                    {(message.message_type === 'image' && isPdfFile(message.file_name)) && (
+                      <div className="space-y-2">
+                        {/* PDF info card - no iframe due to Cloudinary restrictions */}
+                        <div className={`border rounded p-3 ${
+                          isOwnMessage ? 'bg-blue-100 border-blue-200' : 'bg-gray-50'
+                        }`}>
+                          <div className="flex items-center gap-3">
+                            <div className="text-2xl">📄</div>
+                            <div className="flex-1">
+                              <div className={`font-medium text-sm ${
+                                isOwnMessage ? 'text-blue-900' : 'text-gray-900'
+                              }`}>
+                                {message.file_name}
+                              </div>
+                              <div className={`text-xs ${
+                                isOwnMessage ? 'text-blue-700' : 'text-gray-500'
+                              }`}>
+                                PDF Document • {(message.file_size / 1024 / 1024).toFixed(2)} MB
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                          <a 
+                            href={message.file_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className={`text-xs px-3 py-2 rounded flex items-center gap-1 ${
+                              isOwnMessage 
+                                ? 'bg-blue-700 text-white hover:bg-blue-800' 
+                                : 'bg-blue-600 text-white hover:bg-blue-700'
+                            }`}
+                          >
+                            📖 View PDF
+                          </a>
+                          <a 
+                            href={message.file_url} 
+                            download={message.file_name}
+                            className={`text-xs px-3 py-2 rounded flex items-center gap-1 ${
+                              isOwnMessage 
+                                ? 'bg-blue-800 text-white hover:bg-blue-900' 
+                                : 'bg-gray-600 text-white hover:bg-gray-700'
+                            }`}
+                          >
+                            💾 Download
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* File content - with special handling for PDFs */}
                     {message.message_type === 'file' && (
                       <div>
-                        <a 
-                          href={message.file_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className={`flex items-center gap-2 ${
-                            isOwnMessage ? 'text-blue-200' : 'text-blue-600'
-                          } hover:underline`}
-                        >
-                          📄 {message.file_name}
-                        </a>
-                        <div className="text-xs opacity-75 mt-1">
-                          {(message.file_size / 1024 / 1024).toFixed(2)} MB
-                        </div>
+                        {isPdfFile(message.file_name) ? (
+                          <div className="space-y-2">
+                            {/* PDF info card - no iframe due to Cloudinary restrictions */}
+                            <div className={`border rounded p-3 ${
+                              isOwnMessage ? 'bg-blue-100 border-blue-200' : 'bg-gray-50'
+                            }`}>
+                              <div className="flex items-center gap-3">
+                                <div className="text-2xl">📄</div>
+                                <div className="flex-1">
+                                  <div className={`font-medium text-sm ${
+                                    isOwnMessage ? 'text-blue-900' : 'text-gray-900'
+                                  }`}>
+                                    {message.file_name}
+                                  </div>
+                                  <div className={`text-xs ${
+                                    isOwnMessage ? 'text-blue-700' : 'text-gray-500'
+                                  }`}>
+                                    PDF Document • {(message.file_size / 1024 / 1024).toFixed(2)} MB
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between gap-2">
+                              <a 
+                                href={message.file_url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className={`text-xs px-3 py-2 rounded flex items-center gap-1 ${
+                                  isOwnMessage 
+                                    ? 'bg-blue-700 text-white hover:bg-blue-800' 
+                                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                                }`}
+                              >
+                                📖 View PDF
+                              </a>
+                              <a 
+                                href={message.file_url} 
+                                download={message.file_name}
+                                className={`text-xs px-3 py-2 rounded flex items-center gap-1 ${
+                                  isOwnMessage 
+                                    ? 'bg-blue-800 text-white hover:bg-blue-900' 
+                                    : 'bg-gray-600 text-white hover:bg-gray-700'
+                                }`}
+                              >
+                                💾 Download
+                              </a>
+                            </div>
+                          </div>
+                        ) : (
+                          <a 
+                            href={message.file_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className={`flex items-center gap-2 ${
+                              isOwnMessage ? 'text-blue-100 hover:text-white' : 'text-blue-600 hover:text-blue-800'
+                            } hover:underline`}
+                          >
+                            📄 {message.file_name}
+                          </a>
+                        )}
+                        {!isPdfFile(message.file_name) && (
+                          <div className={`text-xs opacity-75 mt-1 ${
+                            isOwnMessage ? 'text-blue-200' : 'text-gray-500'
+                          }`}>
+                            {(message.file_size / 1024 / 1024).toFixed(2)} MB
+                          </div>
+                        )}
                       </div>
                     )}
                     

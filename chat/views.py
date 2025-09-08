@@ -135,8 +135,10 @@ class ChatRoomViewSet(viewsets.ModelViewSet):
                 resource_type="auto"  # Auto-detect file type
             )
             
-            # Determine message type based on file
-            file_type = 'image' if upload_result.get('resource_type') == 'image' else 'file'
+            # Determine message type based on actual file extension
+            file_extension = file.name.lower().split('.')[-1] if '.' in file.name else ''
+            image_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg']
+            file_type = 'image' if file_extension in image_extensions else 'file'
             
             # Create message with file
             message = ChatMessage.objects.create(
