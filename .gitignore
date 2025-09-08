@@ -13,4 +13,17 @@ venv/
 
 # OS-specific
 .DS_Store
-Thumbs.db
+Thumbs.db# Local media files (not needed with Cloudinary)
+media/
+handwriting_samples/
+*.jpg
+*.png
+*.gif
+*.jpeg
+*.webp
+
+# Temporary files
+cleanup_*.py
+debug_*.py
+test_cloudinary.py
+migrate_to_cloudinary.py
