@@ -842,6 +842,8 @@ def complete_final_evaluation(request, student_id):
         return Response({"error": "Student not found"}, status=404)
     except FinalEvaluation.DoesNotExist:
         return Response({"error": "Final evaluation not found. Please create the evaluation first."}, status=404)
+    except Exception as e:
+        return Response({"error": f"Error accessing student or evaluation: {str(e)}"}, status=400)
 
     # Check if doctor has access to this student
     if evaluation.doctor != request.user:
@@ -850,14 +852,17 @@ def complete_final_evaluation(request, student_id):
     if evaluation.case_completed:
         return Response({"error": "This case has already been completed"}, status=400)
 
-    # Mark evaluation as complete
-    evaluation.mark_case_complete()
-    
-    return Response({
-        "message": "Final evaluation completed successfully. Case is now closed.",
-        "completion_date": evaluation.completion_date,
-        "evaluation": FinalEvaluationSerializer(evaluation).data
-    })
+    try:
+        # Mark evaluation as complete
+        evaluation.mark_case_complete()
+        
+        return Response({
+            "message": "Final evaluation completed successfully. Case is now closed.",
+            "completion_date": evaluation.completion_date,
+            "evaluation": FinalEvaluationSerializer(evaluation).data
+        })
+    except Exception as e:
+        return Response({"error": f"Error completing evaluation: {str(e)}"}, status=400)
 
 
 @api_view(['GET'])

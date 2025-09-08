@@ -145,6 +145,11 @@ export default function Stage7({ student_id, canEdit, isCompleted, onComplete })
   };
 
   const handleFormChange = (field, value) => {
+    // Prevent changes if case is completed
+    if (evaluation?.case_completed) {
+      return;
+    }
+    
     setEvaluationForm(prev => ({
       ...prev,
       [field]: value
@@ -153,6 +158,11 @@ export default function Stage7({ student_id, canEdit, isCompleted, onComplete })
   };
 
   const handleRecommendationChange = (field, value) => {
+    // Prevent changes if case is completed
+    if (evaluation?.case_completed) {
+      return;
+    }
+    
     setRecommendationForm(prev => ({
       ...prev,
       [field]: value
@@ -380,6 +390,23 @@ export default function Stage7({ student_id, canEdit, isCompleted, onComplete })
 
         {/* Evaluation Form */}
         <div className="space-y-6">
+          {/* Case Completed Notice */}
+          {evaluation?.case_completed && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <span className="text-green-600 text-xl">✓</span>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-green-800">Case Completed</h3>
+                  <p className="text-sm text-green-700">
+                    This evaluation was completed on {new Date(evaluation.completion_date).toLocaleDateString()} and is now read-only.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Analysis Summaries */}
           <div className="grid md:grid-cols-1 gap-4">
             <div>
@@ -387,8 +414,9 @@ export default function Stage7({ student_id, canEdit, isCompleted, onComplete })
               <textarea
                 value={evaluationForm.handwriting_analysis_summary}
                 onChange={(e) => handleFormChange('handwriting_analysis_summary', e.target.value)}
-                className="w-full border rounded-md px-3 py-2 h-24"
+                className={`w-full border rounded-md px-3 py-2 h-24 ${evaluation?.case_completed ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                 placeholder="Summarize findings from handwriting analysis..."
+                disabled={evaluation?.case_completed}
               />
             </div>
             <div>
@@ -588,21 +616,35 @@ export default function Stage7({ student_id, canEdit, isCompleted, onComplete })
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="font-semibold text-blue-800">Save Evaluation</h4>
-                <p className="text-blue-600 text-sm">Save your progress before making therapy decisions</p>
+                <p className="text-blue-600 text-sm">
+                  {evaluation?.case_completed 
+                    ? 'Case completed - evaluation is read-only' 
+                    : 'Save your progress before making therapy decisions'
+                  }
+                </p>
               </div>
               <button
                 onClick={saveEvaluation}
-                disabled={isSubmitting || (!hasUnsavedChanges && evaluation)}
+                disabled={isSubmitting || (!hasUnsavedChanges && evaluation) || evaluation?.case_completed}
                 className={`px-6 py-2 rounded font-medium ${
                   (!hasUnsavedChanges && evaluation) 
                     ? 'bg-green-100 text-green-700 border border-green-300 cursor-not-allowed' 
+                    : evaluation?.case_completed
+                    ? 'bg-gray-100 text-gray-500 border border-gray-300 cursor-not-allowed'
                     : 'bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50'
                 }`}
               >
-                {isSubmitting ? 'Saving...' : (!hasUnsavedChanges && evaluation) ? '✓ Saved' : 'Save Evaluation'}
+                {evaluation?.case_completed 
+                  ? '✓ Case Completed' 
+                  : isSubmitting 
+                  ? 'Saving...' 
+                  : (!hasUnsavedChanges && evaluation) 
+                  ? '✓ Saved' 
+                  : 'Save Evaluation'
+                }
               </button>
             </div>
-            {!evaluation && (
+            {!evaluation && !evaluation?.case_completed && (
               <p className="text-blue-600 text-sm mt-2">⚠️ You must save the evaluation before proceeding with therapy decisions.</p>
             )}
           </div>
@@ -617,7 +659,7 @@ export default function Stage7({ student_id, canEdit, isCompleted, onComplete })
                   value={evaluationForm.therapy_decision}
                   onChange={(e) => handleFormChange('therapy_decision', e.target.value)}
                   className="w-full border rounded-md px-3 py-2"
-                  disabled={!evaluation}
+                  disabled={!evaluation || evaluation?.case_completed}
                 >
                   <option value="pending">Decision Pending</option>
                   <option value="terminate">Complete Therapy</option>
@@ -625,6 +667,9 @@ export default function Stage7({ student_id, canEdit, isCompleted, onComplete })
                 </select>
                 {!evaluation && (
                   <p className="text-yellow-600 text-sm mt-1">Please save evaluation first to enable therapy decisions</p>
+                )}
+                {evaluation?.case_completed && (
+                  <p className="text-green-600 text-sm mt-1">✓ Case has been completed - no further changes allowed</p>
                 )}
               </div>
               
@@ -636,6 +681,7 @@ export default function Stage7({ student_id, canEdit, isCompleted, onComplete })
                     onChange={(e) => handleFormChange('therapy_termination_reason', e.target.value)}
                     className="w-full border rounded-md px-3 py-2 h-20"
                     placeholder="Explain why therapy is being completed (e.g., student has achieved learning goals, no longer shows signs of dyslexia, etc.)"
+                    disabled={evaluation?.case_completed}
                   />
                 </div>
               )}
@@ -653,7 +699,7 @@ export default function Stage7({ student_id, canEdit, isCompleted, onComplete })
               )}
 
               {/* Therapy Decision Action Buttons */}
-              {evaluation && evaluationForm.therapy_decision !== 'pending' && (
+              {evaluation && evaluationForm.therapy_decision !== 'pending' && !evaluation.case_completed && (
                 <div className="mt-4 pt-4 border-t border-yellow-200">
                   {evaluationForm.therapy_decision === 'terminate' && (
                     <button
@@ -705,10 +751,30 @@ export default function Stage7({ student_id, canEdit, isCompleted, onComplete })
       <h3 className="text-xl font-bold mb-4">Stage 7: Final Evaluation</h3>
       
       <div className="space-y-6">
+        {/* Case Completed Notice */}
+        {evaluation?.case_completed && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <span className="text-green-600 text-xl">✓</span>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-green-800">Case Completed</h3>
+                <p className="text-sm text-green-700">
+                  This evaluation was completed on {new Date(evaluation.completion_date).toLocaleDateString()} and is now read-only.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Information Panel */}
         <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-4">
           <p className="text-blue-700 text-sm">
-            <strong>{userRole === 'teacher' ? 'Teacher' : 'Parent'} Input Required:</strong> Please provide your observations and recommendations to help the doctor complete the final evaluation.
+            <strong>{userRole === 'teacher' ? 'Teacher' : 'Parent'} Input:</strong> {evaluation?.case_completed 
+              ? 'The final evaluation has been completed. Your recommendations are now read-only.' 
+              : 'Please provide your observations and recommendations to help the doctor complete the final evaluation.'
+            }
           </p>
         </div>
 
@@ -755,9 +821,10 @@ export default function Stage7({ student_id, canEdit, isCompleted, onComplete })
               <textarea
                 value={recommendationForm.observations}
                 onChange={(e) => handleRecommendationChange('observations', e.target.value)}
-                className="w-full border rounded-md px-3 py-2 h-24"
+                className={`w-full border rounded-md px-3 py-2 h-24 ${evaluation?.case_completed ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                 placeholder={`Describe your observations about the student's progress, behavior, and learning patterns...`}
                 required
+                disabled={evaluation?.case_completed}
               />
             </div>
 
@@ -768,9 +835,10 @@ export default function Stage7({ student_id, canEdit, isCompleted, onComplete })
               <textarea
                 value={recommendationForm.recommendations}
                 onChange={(e) => handleRecommendationChange('recommendations', e.target.value)}
-                className="w-full border rounded-md px-3 py-2 h-24"
+                className={`w-full border rounded-md px-3 py-2 h-24 ${evaluation?.case_completed ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                 placeholder={`Suggest specific strategies, interventions, or support methods that have worked or might help...`}
                 required
+                disabled={evaluation?.case_completed}
               />
             </div>
 
@@ -779,8 +847,9 @@ export default function Stage7({ student_id, canEdit, isCompleted, onComplete })
               <textarea
                 value={recommendationForm.positive_changes}
                 onChange={(e) => handleRecommendationChange('positive_changes', e.target.value)}
-                className="w-full border rounded-md px-3 py-2 h-20"
+                className={`w-full border rounded-md px-3 py-2 h-20 ${evaluation?.case_completed ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                 placeholder="Describe any positive improvements you've noticed..."
+                disabled={evaluation?.case_completed}
               />
             </div>
 
@@ -789,8 +858,9 @@ export default function Stage7({ student_id, canEdit, isCompleted, onComplete })
               <textarea
                 value={recommendationForm.concerns}
                 onChange={(e) => handleRecommendationChange('concerns', e.target.value)}
-                className="w-full border rounded-md px-3 py-2 h-20"
+                className={`w-full border rounded-md px-3 py-2 h-20 ${evaluation?.case_completed ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                 placeholder="Mention any concerns or ongoing challenges..."
+                disabled={evaluation?.case_completed}
               />
             </div>
 
@@ -799,27 +869,41 @@ export default function Stage7({ student_id, canEdit, isCompleted, onComplete })
               <textarea
                 value={recommendationForm.support_needed}
                 onChange={(e) => handleRecommendationChange('support_needed', e.target.value)}
-                className="w-full border rounded-md px-3 py-2 h-20"
+                className={`w-full border rounded-md px-3 py-2 h-20 ${evaluation?.case_completed ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                 placeholder="What additional support or resources would be helpful?"
+                disabled={evaluation?.case_completed}
               />
             </div>
 
             <div className="flex space-x-4">
               <button
                 onClick={saveRecommendation}
-                disabled={submittingRecommendation || !recommendationForm.observations.trim() || !recommendationForm.recommendations.trim()}
-                className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+                disabled={submittingRecommendation || !recommendationForm.observations.trim() || !recommendationForm.recommendations.trim() || evaluation?.case_completed}
+                className={`px-6 py-2 rounded font-medium ${
+                  evaluation?.case_completed 
+                    ? 'bg-gray-100 text-gray-500 border border-gray-300 cursor-not-allowed'
+                    : 'bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50'
+                }`}
               >
-                {submittingRecommendation ? 'Saving...' : 'Save Recommendation'}
+                {evaluation?.case_completed 
+                  ? '✓ Case Completed' 
+                  : submittingRecommendation 
+                  ? 'Saving...' 
+                  : 'Save Recommendation'
+                }
               </button>
             </div>
           </div>
 
           {myRecommendation && (
-            <div className="mt-4 bg-green-50 border border-green-200 rounded p-3">
-              <p className="text-green-700 text-sm">
+            <div className={`mt-4 border rounded p-3 ${evaluation?.case_completed ? 'bg-gray-50 border-gray-200' : 'bg-green-50 border-green-200'}`}>
+              <p className={`text-sm ${evaluation?.case_completed ? 'text-gray-700' : 'text-green-700'}`}>
                 ✓ Your recommendation was submitted on {new Date(myRecommendation.submitted_at).toLocaleDateString()}
-                <br />You can update it anytime before the doctor completes the final evaluation.
+                <br />
+                {evaluation?.case_completed 
+                  ? 'The case has been completed and recommendations are now read-only.'
+                  : 'You can update it anytime before the doctor completes the final evaluation.'
+                }
               </p>
             </div>
           )}
