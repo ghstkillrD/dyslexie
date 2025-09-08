@@ -1,6 +1,7 @@
 from rest_framework import serializers
-from .models import User, Student, StudentUserLink
+from .models import User, Student, StudentUserLink, StageProgress, HandwritingSample, StudentTask, AssessmentSummary, ActivityAssignment, ActivityProgress, FinalEvaluation, StakeholderRecommendation
 from django.contrib.auth.password_validation import validate_password
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -23,6 +24,11 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
         return user
 
+class StageProgressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StageProgress
+        fields = ['current_stage', 'completed_stages']
+
 class StudentSerializer(serializers.ModelSerializer):
     # List of emails to assign
     doctor_emails = serializers.ListField(
@@ -31,12 +37,13 @@ class StudentSerializer(serializers.ModelSerializer):
     parent_emails = serializers.ListField(
         child=serializers.EmailField(), write_only=True, required=False
     )
+    stage_progress = StageProgressSerializer(read_only=True)
 
     class Meta:
         model = Student
         fields = [
             'student_id', 'name', 'birthday', 'school', 'grade', 'gender',
-            'doctor_emails', 'parent_emails'
+            'doctor_emails', 'parent_emails', 'stage_progress'
         ]
     
     def create(self, validated_data):
@@ -56,12 +63,12 @@ class StudentSerializer(serializers.ModelSerializer):
         # Link doctors
         doctor_users = User.objects.filter(email__in=doctor_emails, role='doctor')
         for doctor in doctor_users:
-            StudentUserLink.objects.create(student=student, user=doctor)
+            StudentUserLink.objects.create(student=student, user=doctor, role='doctor')
 
         # Link parents
         parent_users = User.objects.filter(email__in=parent_emails, role='parent')
         for parent in parent_users:
-            StudentUserLink.objects.create(student=student, user=parent)
+            StudentUserLink.objects.create(student=student, user=parent, role='parent')
 
         return student
 
@@ -80,12 +87,12 @@ class StudentSerializer(serializers.ModelSerializer):
         # Re-link doctors
         doctor_users = User.objects.filter(email__in=doctor_emails, role='doctor')
         for doctor in doctor_users:
-            StudentUserLink.objects.create(student=instance, user=doctor)
+            StudentUserLink.objects.create(student=instance, user=doctor, role='doctor')
 
         # Re-link parents
         parent_users = User.objects.filter(email__in=parent_emails, role='parent')
         for parent in parent_users:
-            StudentUserLink.objects.create(student=instance, user=parent)
+            StudentUserLink.objects.create(student=instance, user=parent, role='parent')
 
         return instance
 
@@ -98,4 +105,134 @@ class LinkedUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'role']
+
+class HandwritingSampleSerializer(serializers.ModelSerializer):
+    image = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = HandwritingSample
+        fields = '__all__'
+        read_only_fields = ['uploaded_at']
+    
+    def get_image(self, obj):
+        if obj.image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.image.url)
+            return obj.image.url
+        return None
+
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token['role'] = user.role
+        token['username'] = user.username
+        return token
+
+class StudentTaskSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StudentTask
+        fields = ['id', 'student', 'task_name', 'max_score', 'score_obtained']
+        read_only_fields = ['id', 'student', 'score_obtained']
+
+class AssessmentSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AssessmentSummary
+        fields = [
+            'id', 'student', 'doctor', 'cutoff_percentage', 'total_score', 
+            'total_max_score', 'percentage_score', 'risk_level', 
+            'dyslexia_indication', 'summary_notes', 'recommendations',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'student', 'doctor', 'created_at', 'updated_at']
+
+class ActivityAssignmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ActivityAssignment
+        fields = [
+            'id', 'student', 'doctor', 'activity_name', 'activity_type', 
+            'description', 'instructions', 'difficulty', 'frequency', 'duration_minutes',
+            'target_audience', 'expected_outcomes', 'success_criteria',
+            'is_active', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'student', 'doctor', 'created_at', 'updated_at']
+
+
+class ActivityProgressSerializer(serializers.ModelSerializer):
+    activity_assignment = ActivityAssignmentSerializer(read_only=True)
+    
+    class Meta:
+        model = ActivityProgress
+        fields = [
+            'id', 'activity_assignment', 'recorder', 'session_date', 'status',
+            'performer', 'duration_actual', 'completion_percentage', 'score', 'notes',
+            'challenges', 'improvements', 'student_engagement', 'difficulty_level',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'recorder', 'created_at', 'updated_at']
+
+
+class ActivityProgressCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ActivityProgress
+        fields = [
+            'activity_assignment', 'session_date', 'status', 'performer',
+            'duration_actual', 'completion_percentage', 'score', 'notes', 'challenges',
+            'improvements', 'student_engagement', 'difficulty_level'
+        ]
+
+
+class FinalEvaluationSerializer(serializers.ModelSerializer):
+    doctor_name = serializers.CharField(source='doctor.username', read_only=True)
+    student_name = serializers.CharField(source='student.name', read_only=True)
+    
+    class Meta:
+        model = FinalEvaluation
+        fields = [
+            'id', 'student', 'doctor', 'doctor_name', 'student_name',
+            'therapy_session_number', 'therapy_decision', 'therapy_termination_reason',
+            'handwriting_analysis_summary', 'task_performance_summary', 
+            'activity_progress_summary', 'final_diagnosis', 'diagnosis_confidence',
+            'supporting_evidence', 'intervention_priority', 'short_term_goals',
+            'long_term_goals', 'recommended_interventions', 'follow_up_timeline',
+            'monitoring_indicators', 'clinical_notes', 'referrals_needed', 
+            'case_completed', 'completion_date', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'doctor', 'completion_date', 'created_at', 'updated_at']
+
+
+class FinalEvaluationCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FinalEvaluation
+        fields = [
+            'therapy_session_number', 'therapy_decision', 'therapy_termination_reason',
+            'handwriting_analysis_summary', 'task_performance_summary', 
+            'activity_progress_summary', 'final_diagnosis', 'diagnosis_confidence',
+            'supporting_evidence', 'intervention_priority', 'short_term_goals',
+            'long_term_goals', 'recommended_interventions', 'follow_up_timeline',
+            'monitoring_indicators', 'clinical_notes', 'referrals_needed'
+        ]
+
+
+class StakeholderRecommendationSerializer(serializers.ModelSerializer):
+    stakeholder_name = serializers.CharField(source='stakeholder.username', read_only=True)
+    student_name = serializers.CharField(source='student.name', read_only=True)
+    
+    class Meta:
+        model = StakeholderRecommendation
+        fields = [
+            'id', 'student', 'stakeholder', 'stakeholder_type', 'stakeholder_name', 'student_name',
+            'observations', 'recommendations', 'concerns', 'positive_changes', 'support_needed',
+            'therapy_session_number', 'submitted_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'stakeholder', 'stakeholder_type', 'submitted_at', 'updated_at']
+
+
+class StakeholderRecommendationCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StakeholderRecommendation
+        fields = [
+            'observations', 'recommendations', 'concerns', 'positive_changes', 'support_needed'
+        ]
 
