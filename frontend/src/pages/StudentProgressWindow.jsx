@@ -8,10 +8,13 @@ import Stage3 from '../components/spw_stages/Stage3';
 import Stage4 from '../components/spw_stages/Stage4';
 import Stage5 from '../components/spw_stages/Stage5';
 import Stage6 from '../components/spw_stages/Stage6';
+import Stage7 from '../components/spw_stages/Stage7';
+import TherapyReports from '../components/spw_stages/TherapyReports';
 
 export default function StudentProgressWindow() {
   const { student_id } = useParams()
   const [currentStage, setCurrentStage] = useState(1);
+  const [currentTab, setCurrentTab] = useState('stages'); // 'stages' or 'reports'
   const [student, setStudent] = useState(null);
   const [progress, setProgress] = useState({ current_stage: 1, completed_stages: [] });
   const [userRole, setUserRole] = useState(null);
@@ -48,7 +51,7 @@ export default function StudentProgressWindow() {
     "Stage 4: Cutoff & Summary",
     "Stage 5: Assign Activities",
     "Stage 6: Activity Tracking",
-    "Stage 7: Evaluation Summary"
+    "Stage 7: Final Evaluation"
   ];
 
   // Allowed roles per stage
@@ -91,104 +94,149 @@ export default function StudentProgressWindow() {
         {student ? `${student.name}'s Progress` : "Loading..."}
       </h2>
 
-      <div className="flex space-x-2 mb-6">
-        {stages.map((label, index) => (
-          <button
-            key={index}
-            className={`px-3 py-1 rounded 
-              ${currentStage === index + 1 ? 'bg-blue-500 text-white' : 'bg-gray-200'}
-              ${isLocked(index) ? 'opacity-50 cursor-not-allowed' : ''}`}
-            onClick={() => handleStageClick(index)}
-            disabled={isLocked(index)}
-          >
-            {index + 1}
-          </button>
-        ))}
+      {/* Tab Navigation */}
+      <div className="flex space-x-2 mb-6 border-b">
+        <button
+          className={`px-4 py-2 font-medium rounded-t-lg ${
+            currentTab === 'stages' 
+              ? 'bg-blue-500 text-white border-b-2 border-blue-500' 
+              : 'bg-gray-200 hover:bg-gray-300'
+          }`}
+          onClick={() => setCurrentTab('stages')}
+        >
+          Assessment Stages
+        </button>
+        <button
+          className={`px-4 py-2 font-medium rounded-t-lg ${
+            currentTab === 'reports' 
+              ? 'bg-blue-500 text-white border-b-2 border-blue-500' 
+              : 'bg-gray-200 hover:bg-gray-300'
+          }`}
+          onClick={() => setCurrentTab('reports')}
+        >
+          Therapy Reports
+        </button>
       </div>
 
-      <div className="border p-4 rounded bg-white">
-        <h3 className="text-lg font-semibold">{stages[currentStage - 1]}</h3>
+      {currentTab === 'stages' ? (
+        // Stages tab content
+        <>
+          <div className="flex space-x-2 mb-6">
+            {stages.map((label, index) => (
+              <button
+                key={index}
+                className={`px-3 py-1 rounded 
+                  ${currentStage === index + 1 ? 'bg-blue-500 text-white' : 'bg-gray-200'}
+                  ${isLocked(index) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                onClick={() => handleStageClick(index)}
+                disabled={isLocked(index)}
+              >
+                {index + 1}
+              </button>
+            ))}
+          </div>
 
-        {isLocked(currentStage - 1) && (
-          <p className="text-red-500 mt-2">
-            This stage is locked. Complete previous stages first.
-          </p>
-        )}
+          <div className="border p-4 rounded bg-white">
+            <h3 className="text-lg font-semibold">{stages[currentStage - 1]}</h3>
 
-        {/* Role-based message */}
-        {!canEditStage(currentStage) && !isCompleted(currentStage - 1) && currentStage === progress.current_stage && (
-          <p className="text-orange-500 mt-2">
-            This stage is to be completed by the {stageRoles[currentStage].join('/')} of this student.
-          </p>
-        )}
+            {isLocked(currentStage - 1) && (
+              <p className="text-red-500 mt-2">
+                This stage is locked. Complete previous stages first.
+              </p>
+            )}
 
-        {isCompleted(currentStage - 1) && currentStage !== progress.current_stage && (
-          <p className="text-green-500 mt-2">
-            This stage has been completed (view-only).
-          </p>
-        )}
+            {/* Role-based message */}
+            {!canEditStage(currentStage) && !isCompleted(currentStage - 1) && currentStage === progress.current_stage && (
+              <p className="text-orange-500 mt-2">
+                This stage is to be completed by the {stageRoles[currentStage].join('/')} of this student.
+              </p>
+            )}
 
-        {/* Stage 1 UI */}
-        {currentStage === 1 && !isLocked(0) && (
-          <Stage1
-            student_id={student_id}
-            canEdit={canEditStage(1)}
-            isCompleted={isCompleted(0)}
-            onComplete={handleStageComplete}
-          />
-        )}
+            {isCompleted(currentStage - 1) && currentStage !== progress.current_stage && (
+              <p className="text-green-500 mt-2">
+                This stage has been completed (view-only).
+              </p>
+            )}
 
-        {/* Stage 2: Define Tasks */}
-        {currentStage === 2 && !isLocked(1) && (
-          <Stage2
-            student_id={student_id}
-            canEdit={canEditStage(2)}
-            isCompleted={isCompleted(1)}
-            onComplete={handleStageComplete}
-          />
-        )}
+            {/* Stage 1 UI */}
+            {currentStage === 1 && !isLocked(0) && (
+              <Stage1
+                student_id={student_id}
+                canEdit={canEditStage(1)}
+                isCompleted={isCompleted(0)}
+                onComplete={handleStageComplete}
+              />
+            )}
 
-        {/* Stage 3: Assign Marks */}
-        {currentStage === 3 && !isLocked(2) && (
-          <Stage3
-            student_id={student_id}
-            canEdit={canEditStage(3)}
-            isCompleted={isCompleted(2)}
-            onComplete={handleStageComplete}
-          />
-        )}
+            {/* Stage 2: Define Tasks */}
+            {currentStage === 2 && !isLocked(1) && (
+              <Stage2
+                student_id={student_id}
+                canEdit={canEditStage(2)}
+                isCompleted={isCompleted(1)}
+                onComplete={handleStageComplete}
+              />
+            )}
 
-        {/* Stage 4: Cutoff & Summary */}
-        {currentStage === 4 && !isLocked(3) && (
-          <Stage4
-            student_id={student_id}
-            canEdit={canEditStage(4)}
-            isCompleted={isCompleted(3)}
-            onComplete={handleStageComplete}
-          />
-        )}
+            {/* Stage 3: Assign Marks */}
+            {currentStage === 3 && !isLocked(2) && (
+              <Stage3
+                student_id={student_id}
+                canEdit={canEditStage(3)}
+                isCompleted={isCompleted(2)}
+                onComplete={handleStageComplete}
+              />
+            )}
 
-        {/* Stage 5: Assign Activities */}
-        {currentStage === 5 && !isLocked(4) && (
-          <Stage5
-            student_id={student_id}
-            canEdit={canEditStage(5)}
-            isCompleted={isCompleted(4)}
-            onComplete={handleStageComplete}
-          />
-        )}
+            {/* Stage 4: Cutoff & Summary */}
+            {currentStage === 4 && !isLocked(3) && (
+              <Stage4
+                student_id={student_id}
+                canEdit={canEditStage(4)}
+                isCompleted={isCompleted(3)}
+                onComplete={handleStageComplete}
+              />
+            )}
 
-        {/* Stage 6: Activity Tracking */}
-        {currentStage === 6 && !isLocked(5) && (
-          <Stage6
-            student_id={student_id}
-            canEdit={canEditStage(6)}
-            isCompleted={isCompleted(5)}
-            onComplete={handleStageComplete}
-          />
-        )}
+            {/* Stage 5: Assign Activities */}
+            {currentStage === 5 && !isLocked(4) && (
+              <Stage5
+                student_id={student_id}
+                canEdit={canEditStage(5)}
+                isCompleted={isCompleted(4)}
+                onComplete={handleStageComplete}
+              />
+            )}
 
-      </div>
+            {/* Stage 6: Activity Tracking */}
+            {currentStage === 6 && !isLocked(5) && (
+              <Stage6
+                student_id={student_id}
+                canEdit={canEditStage(6)}
+                isCompleted={isCompleted(5)}
+                onComplete={handleStageComplete}
+              />
+            )}
+
+            {/* Stage 7: Final Evaluation */}
+            {currentStage === 7 && !isLocked(6) && (
+              <Stage7
+                student_id={student_id}
+                canEdit={canEditStage(7)}
+                isCompleted={isCompleted(6)}
+                onComplete={handleStageComplete}
+              />
+            )}
+
+          </div>
+        </>
+      ) : (
+        // Reports tab content
+        <div className="border p-4 rounded bg-white">
+          <TherapyReports student_id={student_id} />
+        </div>
+      )}
+      
       <button
         type="button"
         onClick={() => {

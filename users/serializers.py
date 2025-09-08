@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Student, StudentUserLink, StageProgress, HandwritingSample, StudentTask, AssessmentSummary, ActivityAssignment, ActivityProgress
+from .models import User, Student, StudentUserLink, StageProgress, HandwritingSample, StudentTask, AssessmentSummary, ActivityAssignment, ActivityProgress, FinalEvaluation, StakeholderRecommendation
 from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
@@ -170,5 +170,59 @@ class ActivityProgressCreateSerializer(serializers.ModelSerializer):
             'activity_assignment', 'session_date', 'status', 'performer',
             'duration_actual', 'completion_percentage', 'notes', 'challenges',
             'improvements', 'student_engagement', 'difficulty_level'
+        ]
+
+
+class FinalEvaluationSerializer(serializers.ModelSerializer):
+    doctor_name = serializers.CharField(source='doctor.username', read_only=True)
+    student_name = serializers.CharField(source='student.name', read_only=True)
+    
+    class Meta:
+        model = FinalEvaluation
+        fields = [
+            'id', 'student', 'doctor', 'doctor_name', 'student_name',
+            'therapy_session_number', 'therapy_decision', 'therapy_termination_reason',
+            'handwriting_analysis_summary', 'task_performance_summary', 
+            'activity_progress_summary', 'final_diagnosis', 'diagnosis_confidence',
+            'supporting_evidence', 'intervention_priority', 'short_term_goals',
+            'long_term_goals', 'recommended_interventions', 'follow_up_timeline',
+            'monitoring_indicators', 'clinical_notes', 'referrals_needed', 
+            'case_completed', 'completion_date', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'doctor', 'completion_date', 'created_at', 'updated_at']
+
+
+class FinalEvaluationCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FinalEvaluation
+        fields = [
+            'therapy_session_number', 'therapy_decision', 'therapy_termination_reason',
+            'handwriting_analysis_summary', 'task_performance_summary', 
+            'activity_progress_summary', 'final_diagnosis', 'diagnosis_confidence',
+            'supporting_evidence', 'intervention_priority', 'short_term_goals',
+            'long_term_goals', 'recommended_interventions', 'follow_up_timeline',
+            'monitoring_indicators', 'clinical_notes', 'referrals_needed'
+        ]
+
+
+class StakeholderRecommendationSerializer(serializers.ModelSerializer):
+    stakeholder_name = serializers.CharField(source='stakeholder.username', read_only=True)
+    student_name = serializers.CharField(source='student.name', read_only=True)
+    
+    class Meta:
+        model = StakeholderRecommendation
+        fields = [
+            'id', 'student', 'stakeholder', 'stakeholder_type', 'stakeholder_name', 'student_name',
+            'observations', 'recommendations', 'concerns', 'positive_changes', 'support_needed',
+            'therapy_session_number', 'submitted_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'stakeholder', 'stakeholder_type', 'submitted_at', 'updated_at']
+
+
+class StakeholderRecommendationCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StakeholderRecommendation
+        fields = [
+            'observations', 'recommendations', 'concerns', 'positive_changes', 'support_needed'
         ]
 

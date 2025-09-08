@@ -2,8 +2,8 @@ from rest_framework import generics, status, viewsets, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.decorators import api_view, permission_classes
-from .models import User, Student, StudentUserLink, StageProgress, HandwritingSample, StudentTask, AssessmentSummary, ActivityAssignment, ActivityProgress
-from .serializers import UserSerializer, RegisterSerializer, StudentSerializer, StudentUserLinkSerializer, LinkedUserSerializer, MyTokenObtainPairSerializer, HandwritingSampleSerializer, StudentTaskSerializer, AssessmentSummarySerializer, ActivityAssignmentSerializer, ActivityProgressSerializer, ActivityProgressCreateSerializer
+from .models import User, Student, StudentUserLink, StageProgress, HandwritingSample, StudentTask, AssessmentSummary, ActivityAssignment, ActivityProgress, FinalEvaluation, TherapySessionReport, StakeholderRecommendation
+from .serializers import UserSerializer, RegisterSerializer, StudentSerializer, StudentUserLinkSerializer, LinkedUserSerializer, MyTokenObtainPairSerializer, HandwritingSampleSerializer, StudentTaskSerializer, AssessmentSummarySerializer, ActivityAssignmentSerializer, ActivityProgressSerializer, ActivityProgressCreateSerializer, FinalEvaluationSerializer, FinalEvaluationCreateSerializer, StakeholderRecommendationSerializer, StakeholderRecommendationCreateSerializer
 from rest_framework.permissions import IsAuthenticated
 from .permissions import IsTeacherOrReadOnly, IsLinkedDoctorOrParentReadOnly
 from rest_framework.decorators import action
@@ -715,3 +715,562 @@ class ExtendSessionView(APIView):
                 'error': 'Failed to extend session',
                 'detail': str(e)
             }, status=400)
+
+
+# Stage 7: Final Evaluation Views
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_comprehensive_student_data(request, student_id):
+    """
+    Get comprehensive data for Stage 7 final evaluation
+    Only accessible by doctors
+    """
+    if request.user.role != 'doctor':
+        return Response({"error": "Only doctors can access comprehensive evaluation data"}, status=403)
+    
+    try:
+        student = Student.objects.get(student_id=student_id)
+    except Student.DoesNotExist:
+        return Response({"error": "Student not found"}, status=404)
+
+    # Check if doctor has access to this student
+    if not ActivityAssignment.objects.filter(student=student, doctor=request.user).exists():
+        return Response({"error": "You don't have access to this student"}, status=403)
+
+    # Gather comprehensive data from all stages
+    data = {
+        'student': StudentSerializer(student).data,
+        'handwriting_analysis': [],
+        'task_performance': {},
+        'assessment_summary': {},
+        'activity_assignments': [],
+        'activity_progress': []
+    }
+
+    # Stage 1 & 2: Handwriting Analysis
+    handwriting_samples = student.handwriting_samples.all()
+    data['handwriting_analysis'] = HandwritingSampleSerializer(handwriting_samples, many=True).data
+
+    # Stage 3: Task Performance
+    tasks = student.tasks.all()
+    data['task_performance'] = {
+        'tasks': StudentTaskSerializer(tasks, many=True).data,
+        'total_tasks': tasks.count(),
+        'completed_tasks': tasks.filter(score_obtained__isnull=False).count()
+    }
+
+    # Stage 4: Assessment Summary
+    try:
+        assessment = student.assessment_summary
+        data['assessment_summary'] = AssessmentSummarySerializer(assessment).data
+    except AssessmentSummary.DoesNotExist:
+        data['assessment_summary'] = None
+
+    # Stage 5: Activity Assignments
+    activities = student.activity_assignments.filter(doctor=request.user)
+    data['activity_assignments'] = ActivityAssignmentSerializer(activities, many=True).data
+
+    # Stage 6: Activity Progress
+    progress_records = ActivityProgress.objects.filter(
+        activity_assignment__student=student,
+        activity_assignment__doctor=request.user
+    )
+    data['activity_progress'] = ActivityProgressSerializer(progress_records, many=True).data
+
+    return Response(data)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def final_evaluation_view(request, student_id):
+    """
+    Handle final evaluation for Stage 7
+    GET: Retrieve existing evaluation
+    POST: Create or update evaluation
+    """
+    if request.user.role != 'doctor':
+        return Response({"error": "Only doctors can perform final evaluations"}, status=403)
+    
+    try:
+        student = Student.objects.get(student_id=student_id)
+    except Student.DoesNotExist:
+        return Response({"error": "Student not found"}, status=404)
+
+    # Check if doctor has access to this student
+    if not ActivityAssignment.objects.filter(student=student, doctor=request.user).exists():
+        return Response({"error": "You don't have access to this student"}, status=403)
+
+    if request.method == 'GET':
+        try:
+            evaluation = student.final_evaluation
+            return Response(FinalEvaluationSerializer(evaluation).data)
+        except FinalEvaluation.DoesNotExist:
+            return Response({"message": "No final evaluation found"}, status=404)
+    
+    elif request.method == 'POST':
+        try:
+            evaluation = student.final_evaluation
+            serializer = FinalEvaluationCreateSerializer(evaluation, data=request.data, partial=True)
+        except FinalEvaluation.DoesNotExist:
+            serializer = FinalEvaluationCreateSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            evaluation = serializer.save(student=student, doctor=request.user)
+            
+            return Response({
+                "message": "Final evaluation saved successfully",
+                "evaluation": FinalEvaluationSerializer(evaluation).data
+            }, status=201)
+        
+        return Response(serializer.errors, status=400)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def complete_final_evaluation(request, student_id):
+    """
+    Mark the final evaluation as complete and close the case
+    """
+    if request.user.role != 'doctor':
+        return Response({"error": "Only doctors can complete final evaluations"}, status=403)
+    
+    try:
+        student = Student.objects.get(student_id=student_id)
+        evaluation = student.final_evaluation
+    except Student.DoesNotExist:
+        return Response({"error": "Student not found"}, status=404)
+    except FinalEvaluation.DoesNotExist:
+        return Response({"error": "Final evaluation not found. Please create the evaluation first."}, status=404)
+
+    # Check if doctor has access to this student
+    if evaluation.doctor != request.user:
+        return Response({"error": "You can only complete evaluations you created"}, status=403)
+
+    if evaluation.case_completed:
+        return Response({"error": "This case has already been completed"}, status=400)
+
+    # Mark evaluation as complete
+    evaluation.mark_case_complete()
+    
+    return Response({
+        "message": "Final evaluation completed successfully. Case is now closed.",
+        "completion_date": evaluation.completion_date,
+        "evaluation": FinalEvaluationSerializer(evaluation).data
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_evaluation_summary(request, student_id):
+    """
+    Get a summary view of the final evaluation for all stakeholders
+    """
+    try:
+        student = Student.objects.get(student_id=student_id)
+        evaluation = student.final_evaluation
+    except Student.DoesNotExist:
+        return Response({"error": "Student not found"}, status=404)
+    except FinalEvaluation.DoesNotExist:
+        return Response({"error": "Final evaluation not completed yet"}, status=404)
+
+    # Check access permissions
+    user_role = request.user.role
+    has_access = False
+    
+    if user_role == 'teacher':
+        has_access = student.teacher == request.user
+    elif user_role == 'parent':
+        has_access = StudentUserLink.objects.filter(student=student, user=request.user).exists()
+    elif user_role == 'doctor':
+        has_access = evaluation.doctor == request.user
+    
+    if not has_access:
+        return Response({"error": "You don't have access to this evaluation"}, status=403)
+
+    # Return appropriate data based on user role
+    if user_role == 'doctor':
+        # Full access for doctor
+        return Response(FinalEvaluationSerializer(evaluation).data)
+    else:
+        # Limited access for teachers and parents
+        summary_data = {
+            'student_name': student.name,
+            'final_diagnosis': evaluation.final_diagnosis,
+            'intervention_priority': evaluation.intervention_priority,
+            'short_term_goals': evaluation.short_term_goals,
+            'long_term_goals': evaluation.long_term_goals,
+            'follow_up_timeline': evaluation.follow_up_timeline,
+            'case_completed': evaluation.case_completed,
+            'completion_date': evaluation.completion_date
+        }
+        
+        # Get stakeholder recommendations for this user
+        try:
+            user_recommendation = StakeholderRecommendation.objects.get(
+                student__student_id=student_id,
+                stakeholder=request.user
+            )
+            summary_data['my_recommendation'] = StakeholderRecommendationSerializer(user_recommendation).data
+        except StakeholderRecommendation.DoesNotExist:
+            summary_data['my_recommendation'] = None
+            
+        return Response(summary_data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def terminate_therapy_session(request, student_id):
+    """
+    Terminate therapy session - mark student as cured
+    Only accessible by doctors
+    """
+    if request.user.role != 'doctor':
+        return Response({"error": "Only doctors can terminate therapy sessions"}, status=403)
+    
+    try:
+        student = Student.objects.get(id=student_id)
+        evaluation = student.final_evaluation
+        
+        # Check if doctor has access to this student
+        if not StudentUserLink.objects.filter(student=student, user=request.user).exists():
+            return Response({"error": "You don't have access to this student"}, status=403)
+        
+        # Get termination reason from request
+        termination_reason = request.data.get('termination_reason', 'Student has been successfully treated and no longer requires therapy')
+        
+        # Create therapy session report before terminating
+        from .models import TherapySessionReport
+        report = TherapySessionReport.create_report_from_current_data(student)
+        report.session_outcome = 'terminated'
+        report.session_end_date = timezone.now()
+        report.save()
+        
+        # Terminate therapy
+        evaluation.terminate_therapy(termination_reason)
+        
+        return Response({
+            "message": "Therapy session terminated successfully",
+            "student_name": student.name,
+            "session_number": report.session_number,
+            "termination_reason": termination_reason,
+            "completion_date": evaluation.completion_date
+        })
+        
+    except Student.DoesNotExist:
+        return Response({"error": "Student not found"}, status=404)
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def restart_therapy_from_stage5(request, student_id):
+    """
+    Restart therapy from Stage 5 - re-assign new activities
+    Only accessible by doctors
+    """
+    if request.user.role != 'doctor':
+        return Response({"error": "Only doctors can restart therapy sessions"}, status=403)
+    
+    try:
+        student = Student.objects.get(id=student_id)
+        evaluation = student.final_evaluation
+        
+        # Check if doctor has access to this student
+        if not StudentUserLink.objects.filter(student=student, user=request.user).exists():
+            return Response({"error": "You don't have access to this student"}, status=403)
+        
+        # Create therapy session report before restarting
+        from .models import TherapySessionReport
+        report = TherapySessionReport.create_report_from_current_data(student)
+        report.session_outcome = 'continued'
+        report.session_end_date = timezone.now()
+        report.save()
+        
+        # Clear current activity assignments and progress for new session
+        student.activity_assignments.all().delete()
+        ActivityProgress.objects.filter(activity_assignment__student=student).delete()
+        
+        # Increment therapy session number
+        evaluation.therapy_session_number += 1
+        
+        # Restart therapy from Stage 5
+        stage_progress = evaluation.restart_therapy_from_stage5()
+        
+        return Response({
+            "message": "Therapy session restarted successfully",
+            "student_name": student.name,
+            "new_session_number": evaluation.therapy_session_number,
+            "current_stage": stage_progress.current_stage,
+            "completed_stages": stage_progress.completed_stages,
+            "previous_session_report_id": report.id
+        })
+        
+    except Student.DoesNotExist:
+        return Response({"error": "Student not found"}, status=404)
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_therapy_session_reports(request, student_id):
+    """
+    Get all therapy session reports for a student
+    Accessible by teachers, parents, and doctors with appropriate access
+    """
+    try:
+        student = Student.objects.get(id=student_id)
+        
+        # Check access permissions
+        user_role = request.user.role
+        has_access = False
+        
+        if user_role == 'teacher':
+            has_access = student.teacher == request.user
+        elif user_role in ['parent', 'doctor']:
+            has_access = StudentUserLink.objects.filter(student=student, user=request.user).exists()
+        
+        if not has_access:
+            return Response({"error": "You don't have access to this student's reports"}, status=403)
+        
+        # Get all therapy session reports
+        from .models import TherapySessionReport
+        reports = TherapySessionReport.objects.filter(student=student).order_by('-session_number')
+        
+        reports_data = []
+        for report in reports:
+            report_data = {
+                'session_number': report.session_number,
+                'session_start_date': report.session_start_date,
+                'session_end_date': report.session_end_date,
+                'session_outcome': report.session_outcome,
+                'created_at': report.created_at,
+            }
+            
+            # Add appropriate data based on user role
+            if user_role == 'doctor':
+                # Full access for doctors
+                report_data.update({
+                    'activity_assignments_data': report.activity_assignments_data,
+                    'activity_progress_data': report.activity_progress_data,
+                    'final_evaluation_data': report.final_evaluation_data,
+                })
+            else:
+                # Limited access for teachers and parents
+                if report.final_evaluation_data:
+                    eval_data = report.final_evaluation_data
+                    report_data['diagnosis'] = eval_data.get('final_diagnosis', 'Not available')
+                    report_data['intervention_priority'] = eval_data.get('intervention_priority', 'Not available')
+                    
+                    if user_role == 'teacher':
+                        report_data['recommendations'] = eval_data.get('teacher_recommendations', 'Not available')
+                    elif user_role == 'parent':
+                        report_data['recommendations'] = eval_data.get('parent_recommendations', 'Not available')
+                
+                # Summary of activities and progress
+                report_data['total_activities'] = len(report.activity_assignments_data)
+                report_data['progress_records'] = len(report.activity_progress_data)
+            
+            reports_data.append(report_data)
+        
+        return Response({
+            'student_name': student.name,
+            'total_sessions': len(reports_data),
+            'reports': reports_data
+        })
+        
+    except Student.DoesNotExist:
+        return Response({"error": "Student not found"}, status=404)
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_detailed_therapy_report(request, student_id, session_number):
+    """
+    Get detailed view of a specific therapy session report
+    Accessible by teachers, parents, and doctors with appropriate access
+    """
+    try:
+        student = Student.objects.get(id=student_id)
+        
+        # Check access permissions
+        user_role = request.user.role
+        has_access = False
+        
+        if user_role == 'teacher':
+            has_access = student.teacher == request.user
+        elif user_role in ['parent', 'doctor']:
+            has_access = StudentUserLink.objects.filter(student=student, user=request.user).exists()
+        
+        if not has_access:
+            return Response({"error": "You don't have access to this student's reports"}, status=403)
+        
+        # Get specific therapy session report
+        from .models import TherapySessionReport
+        report = TherapySessionReport.objects.get(student=student, session_number=session_number)
+        
+        response_data = {
+            'student_name': student.name,
+            'session_number': report.session_number,
+            'session_start_date': report.session_start_date,
+            'session_end_date': report.session_end_date,
+            'session_outcome': report.session_outcome,
+            'created_at': report.created_at,
+        }
+        
+        # Add data based on user role
+        if user_role == 'doctor':
+            # Full access for doctors
+            response_data.update({
+                'activity_assignments': report.activity_assignments_data,
+                'activity_progress': report.activity_progress_data,
+                'final_evaluation': report.final_evaluation_data,
+            })
+        else:
+            # Filtered access for teachers and parents
+            if report.final_evaluation_data:
+                eval_data = report.final_evaluation_data
+                response_data['evaluation_summary'] = {
+                    'diagnosis': eval_data.get('final_diagnosis'),
+                    'intervention_priority': eval_data.get('intervention_priority'),
+                    'short_term_goals': eval_data.get('short_term_goals'),
+                    'long_term_goals': eval_data.get('long_term_goals'),
+                    'follow_up_timeline': eval_data.get('follow_up_timeline'),
+                }
+                
+                if user_role == 'teacher':
+                    response_data['evaluation_summary']['recommendations'] = eval_data.get('teacher_recommendations')
+                elif user_role == 'parent':
+                    response_data['evaluation_summary']['recommendations'] = eval_data.get('parent_recommendations')
+            
+            # Summary of activities
+            response_data['activities_summary'] = {
+                'total_activities': len(report.activity_assignments_data),
+                'activity_types': list(set([activity.get('activity_type', 'Unknown') for activity in report.activity_assignments_data])),
+                'progress_records': len(report.activity_progress_data),
+            }
+        
+        return Response(response_data)
+        
+    except Student.DoesNotExist:
+        return Response({"error": "Student not found"}, status=404)
+    except TherapySessionReport.DoesNotExist:
+        return Response({"error": "Therapy session report not found"}, status=404)
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def stakeholder_recommendations_view(request, student_id):
+    """
+    Get or create stakeholder recommendations for Stage 7
+    Accessible by teachers and parents
+    """
+    try:
+        student = Student.objects.get(student_id=student_id)
+        
+        # Check access permissions
+        user_role = request.user.role
+        has_access = False
+        
+        if user_role == 'teacher':
+            has_access = student.teacher == request.user
+        elif user_role == 'parent':
+            has_access = StudentUserLink.objects.filter(student=student, user=request.user).exists()
+        
+        if not has_access:
+            return Response({"error": "You don't have access to this student"}, status=403)
+        
+        # Get current therapy session number
+        therapy_session_number = 1
+        if hasattr(student, 'final_evaluation'):
+            therapy_session_number = student.final_evaluation.therapy_session_number
+        
+        if request.method == 'GET':
+            # Get existing recommendation
+            try:
+                recommendation = StakeholderRecommendation.objects.get(
+                    student=student,
+                    stakeholder=request.user,
+                    therapy_session_number=therapy_session_number
+                )
+                return Response(StakeholderRecommendationSerializer(recommendation).data)
+            except StakeholderRecommendation.DoesNotExist:
+                return Response({"message": "No recommendation found"}, status=404)
+        
+        elif request.method == 'POST':
+            # Create or update recommendation
+            recommendation, created = StakeholderRecommendation.objects.get_or_create(
+                student=student,
+                stakeholder=request.user,
+                therapy_session_number=therapy_session_number,
+                defaults={
+                    'stakeholder_type': user_role,
+                }
+            )
+            
+            # Update the recommendation with new data
+            serializer = StakeholderRecommendationCreateSerializer(recommendation, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                
+                return Response({
+                    "message": "Recommendation saved successfully",
+                    "recommendation": StakeholderRecommendationSerializer(recommendation).data
+                })
+            else:
+                return Response(serializer.errors, status=400)
+                
+    except Student.DoesNotExist:
+        return Response({"error": "Student not found"}, status=404)
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_all_stakeholder_recommendations(request, student_id):
+    """
+    Get all stakeholder recommendations for a student (for doctors to view)
+    Only accessible by doctors
+    """
+    if request.user.role != 'doctor':
+        return Response({"error": "Only doctors can view all stakeholder recommendations"}, status=403)
+    
+    try:
+        student = Student.objects.get(student_id=student_id)
+        
+        # Check if doctor has access to this student
+        if not StudentUserLink.objects.filter(student=student, user=request.user).exists():
+            return Response({"error": "You don't have access to this student"}, status=403)
+        
+        # Get current therapy session number
+        therapy_session_number = 1
+        if hasattr(student, 'final_evaluation'):
+            therapy_session_number = student.final_evaluation.therapy_session_number
+        
+        # Get all recommendations for current session
+        recommendations = StakeholderRecommendation.objects.filter(
+            student=student,
+            therapy_session_number=therapy_session_number
+        ).order_by('stakeholder_type')
+        
+        recommendations_data = []
+        for rec in recommendations:
+            recommendations_data.append(StakeholderRecommendationSerializer(rec).data)
+        
+        return Response({
+            'student_name': student.name,
+            'therapy_session_number': therapy_session_number,
+            'recommendations': recommendations_data,
+            'total_recommendations': len(recommendations_data)
+        })
+        
+    except Student.DoesNotExist:
+        return Response({"error": "Student not found"}, status=404)
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)

@@ -3,7 +3,12 @@ from .views import (UserListCreateView, RegisterView, StudentViewSet, StudentUse
                    AnalyzeHandwritingView, EvaluateTasksView, FinalDiagnosisView, MyTokenObtainPairView,
                    MyTokenRefreshView, TokenValidateView, ExtendSessionView,
                    get_student_activities_for_tracking, record_activity_progress, 
-                   get_activity_progress_history, update_activity_progress)
+                   get_activity_progress_history, update_activity_progress,
+                   get_comprehensive_student_data, final_evaluation_view, 
+                   complete_final_evaluation, get_evaluation_summary,
+                   terminate_therapy_session, restart_therapy_from_stage5,
+                   get_therapy_session_reports, get_detailed_therapy_report,
+                   stakeholder_recommendations_view, get_all_stakeholder_recommendations)
 from rest_framework.routers import DefaultRouter
 
 router = DefaultRouter()
@@ -27,4 +32,22 @@ urlpatterns = [
     path('students/<int:student_id>/activities/progress/', record_activity_progress, name='record-activity-progress'),
     path('students/<int:student_id>/activities/<int:activity_id>/history/', get_activity_progress_history, name='activity-progress-history'),
     path('activities/progress/<int:progress_id>/', update_activity_progress, name='update-activity-progress'),
+    
+    # Stage 7: Final Evaluation URLs
+    path('students/<int:student_id>/comprehensive-data/', get_comprehensive_student_data, name='comprehensive-student-data'),
+    path('students/<int:student_id>/final-evaluation/', final_evaluation_view, name='final-evaluation'),
+    path('students/<int:student_id>/complete-evaluation/', complete_final_evaluation, name='complete-final-evaluation'),
+    path('students/<int:student_id>/evaluation-summary/', get_evaluation_summary, name='evaluation-summary'),
+    
+    # Therapy Session Management URLs
+    path('students/<int:student_id>/terminate-therapy/', terminate_therapy_session, name='terminate-therapy'),
+    path('students/<int:student_id>/restart-therapy/', restart_therapy_from_stage5, name='restart-therapy'),
+    
+    # Therapy Session Reports URLs
+    path('students/<int:student_id>/therapy-reports/', get_therapy_session_reports, name='therapy-reports'),
+    path('students/<int:student_id>/therapy-reports/<int:session_number>/', get_detailed_therapy_report, name='detailed-therapy-report'),
+    
+    # Stakeholder Recommendations URLs
+    path('students/<int:student_id>/stakeholder-recommendations/', stakeholder_recommendations_view, name='stakeholder-recommendations'),
+    path('students/<int:student_id>/all-stakeholder-recommendations/', get_all_stakeholder_recommendations, name='all-stakeholder-recommendations'),
 ]
