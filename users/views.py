@@ -8,6 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from .permissions import IsTeacherOrReadOnly, IsLinkedDoctorOrParentReadOnly
 from rest_framework.decorators import action
 import requests
+import json
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.shortcuts import get_object_or_404
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
@@ -155,6 +156,58 @@ class StudentViewSet(viewsets.ModelViewSet):
         tasks = student.tasks.all()
         serializer = StudentTaskSerializer(tasks, many=True)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def get_handwriting_samples(self, request, pk=None):
+        """
+        Get all handwriting samples for a student
+        """
+        student = self.get_object()
+        samples = student.handwriting_samples.all()
+        serializer = HandwritingSampleSerializer(samples, many=True, context={'request': request})
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def save_handwriting_sample(self, request, pk=None):
+        """
+        Save handwriting sample and analysis results to database
+        Used when user clicks "Next" in Stage 1
+        """
+        student = self.get_object()
+        
+        # Only allow teachers who own the student
+        if request.user.role != 'teacher' or student.teacher != request.user:
+            return Response({"error": "Only the assigned teacher can save handwriting samples."}, status=403)
+
+        image = request.FILES.get('image')
+        dyslexia_score = request.data.get('dyslexia_score')
+        interpretation = request.data.get('interpretation')
+        letter_counts = request.data.get('letter_counts')
+
+        if not all([image, dyslexia_score, interpretation, letter_counts]):
+            return Response({"error": "Missing required data: image, dyslexia_score, interpretation, or letter_counts"}, status=400)
+
+        try:
+            # Parse letter_counts if it's a string
+            if isinstance(letter_counts, str):
+                try:
+                    letter_counts = json.loads(letter_counts)
+                except json.JSONDecodeError:
+                    return Response({"error": "Invalid letter_counts format"}, status=400)
+            
+            # Save to database
+            sample = HandwritingSample.objects.create(
+                student=student,
+                image=image,
+                dyslexia_score=dyslexia_score,
+                interpretation=interpretation,
+                letter_counts=letter_counts,
+            )
+            
+            return Response(HandwritingSampleSerializer(sample).data, status=status.HTTP_201_CREATED)
+        
+        except Exception as e:
+            return Response({"error": "Failed to save handwriting sample", "detail": str(e)}, status=500)
 
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def score_tasks(self, request, pk=None):
@@ -560,6 +613,9 @@ class AnalyzeHandwritingView(APIView):
         if not isinstance(image, InMemoryUploadedFile):
             return Response({"error": "Invalid file format"}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Check if this is a temporary analysis (don't save to DB)
+        temp_analysis = request.data.get('temp_analysis', False)
+
         # Prepare request for FastAPI
         try:
             # Read the file content safely
@@ -574,7 +630,16 @@ class AnalyzeHandwritingView(APIView):
 
             data = response.json()
 
-            # Save to DB
+            # If temp_analysis is True, don't save to DB, just return the prediction
+            if temp_analysis:
+                return Response({
+                    'dyslexia_score': data.get('dyslexia_score'),
+                    'interpretation': data.get('interpretation'),
+                    'letter_counts': data.get('letter_counts'),
+                    'temp_analysis': True
+                }, status=status.HTTP_200_OK)
+
+            # Save to DB (original behavior)
             sample = HandwritingSample.objects.create(
                 student=student,
                 image=image,

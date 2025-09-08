@@ -107,10 +107,20 @@ class LinkedUserSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'email', 'role']
 
 class HandwritingSampleSerializer(serializers.ModelSerializer):
+    image = serializers.SerializerMethodField()
+    
     class Meta:
         model = HandwritingSample
         fields = '__all__'
         read_only_fields = ['uploaded_at']
+    
+    def get_image(self, obj):
+        if obj.image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.image.url)
+            return obj.image.url
+        return None
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
