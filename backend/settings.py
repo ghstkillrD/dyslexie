@@ -32,6 +32,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',  # Add Daphne for ASGI/WebSocket support
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -41,9 +42,11 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'users',
+    'chat',  # Add chat app
     'corsheaders',
     'cloudinary_storage',
     'cloudinary',
+    'channels',  # Add channels for WebSocket
 ]
 
 MIDDLEWARE = [
@@ -189,5 +192,26 @@ SIMPLE_JWT = {
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
     'TOKEN_TYPE_CLAIM': 'token_type',
 }
+
+# Django Channels Configuration
+ASGI_APPLICATION = 'backend.asgi.application'
+
+# Redis configuration for Channels (if you have Redis installed)
+# For development, we'll use in-memory channel layer
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    },
+}
+
+# For production with Redis (uncomment when ready):
+# CHANNEL_LAYERS = {
+#     'default': {
+#         'BACKEND': 'channels_redis.core.RedisChannelLayer',
+#         'CONFIG': {
+#             "hosts": [('127.0.0.1', 6379)],
+#         },
+#     },
+# }
 
 CORS_ALLOW_ALL_ORIGINS = True

@@ -10,14 +10,16 @@ import Stage5 from '../components/spw_stages/Stage5';
 import Stage6 from '../components/spw_stages/Stage6';
 import Stage7 from '../components/spw_stages/Stage7';
 import TherapyReports from '../components/spw_stages/TherapyReports';
+import ChatComponent from '../components/ChatComponent';
 
 export default function StudentProgressWindow() {
   const { student_id } = useParams()
   const [currentStage, setCurrentStage] = useState(1);
-  const [currentTab, setCurrentTab] = useState('stages'); // 'stages' or 'reports'
+  const [currentTab, setCurrentTab] = useState('stages'); // 'stages', 'reports', or 'messages'
   const [student, setStudent] = useState(null);
   const [progress, setProgress] = useState({ current_stage: 1, completed_stages: [] });
   const [userRole, setUserRole] = useState(null);
+  const [user, setUser] = useState(null);
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -25,6 +27,11 @@ export default function StudentProgressWindow() {
     if (token) {
       const decoded = jwtDecode(token);
       setUserRole(decoded.role);
+      setUser({
+        id: decoded.user_id,
+        username: decoded.username || 'User',
+        role: decoded.role
+      });
     }
     axios.get(`http://127.0.0.1:8000/api/users/students/${student_id}/`, {
       headers: { Authorization: `Bearer ${token}` }
@@ -188,6 +195,16 @@ export default function StudentProgressWindow() {
           >
             Therapy Reports
           </button>
+          <button
+            className={`px-4 py-2 font-medium rounded-t-lg ${
+              currentTab === 'messages' 
+                ? 'bg-blue-500 text-white border-b-2 border-blue-500' 
+                : 'bg-gray-200 hover:bg-gray-300'
+            }`}
+            onClick={() => setCurrentTab('messages')}
+          >
+            Messages
+          </button>
         </div>
 
         {/* Terminate Progress Button - Only visible to teachers and only after Stage 1 completion */}
@@ -315,10 +332,15 @@ export default function StudentProgressWindow() {
 
           </div>
         </>
-      ) : (
+      ) : currentTab === 'reports' ? (
         // Reports tab content
         <div className="border p-4 rounded bg-white">
           <TherapyReports student_id={student_id} />
+        </div>
+      ) : (
+        // Messages tab content
+        <div className="border p-4 rounded bg-white">
+          <ChatComponent studentId={student_id} currentUser={user} />
         </div>
       )}
       
