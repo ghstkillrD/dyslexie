@@ -147,7 +147,8 @@ class ActivityAssignment(models.Model):
     description = models.TextField(help_text="Detailed description of the activity")
     instructions = models.TextField(help_text="Step-by-step instructions for implementation")
     
-    # Scheduling and targets
+    # Difficulty and scheduling
+    difficulty = models.CharField(max_length=20, default='medium', help_text="Activity difficulty level")
     frequency = models.CharField(max_length=20, choices=FREQUENCY_CHOICES)
     duration_minutes = models.IntegerField(help_text="Duration of each session in minutes")
     target_audience = models.CharField(max_length=10, choices=TARGET_AUDIENCE_CHOICES)
@@ -193,6 +194,7 @@ class ActivityProgress(models.Model):
     
     # Progress tracking
     completion_percentage = models.IntegerField(default=0, help_text="Completion percentage (0-100)")
+    score = models.IntegerField(null=True, blank=True, help_text="Score obtained out of 10")
     notes = models.TextField(blank=True, help_text="Session notes and observations")
     challenges = models.TextField(blank=True, help_text="Any challenges encountered")
     improvements = models.TextField(blank=True, help_text="Observed improvements")
@@ -356,6 +358,7 @@ class TherapySessionReport(models.Model):
                 'activity_name': assignment.activity_name,
                 'activity_type': assignment.activity_type,
                 'description': assignment.description,
+                'difficulty': assignment.difficulty,
                 'frequency': assignment.frequency,
                 'duration_minutes': assignment.duration_minutes,
                 'target_audience': assignment.target_audience,
@@ -375,6 +378,7 @@ class TherapySessionReport(models.Model):
                 'performer': progress.performer,
                 'status': progress.status,
                 'completion_percentage': progress.completion_percentage,
+                'score': progress.score,
                 'duration_actual': progress.duration_actual,
                 'notes': progress.notes,
                 'challenges': progress.challenges,

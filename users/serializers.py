@@ -142,7 +142,7 @@ class ActivityAssignmentSerializer(serializers.ModelSerializer):
         model = ActivityAssignment
         fields = [
             'id', 'student', 'doctor', 'activity_name', 'activity_type', 
-            'description', 'instructions', 'frequency', 'duration_minutes',
+            'description', 'instructions', 'difficulty', 'frequency', 'duration_minutes',
             'target_audience', 'expected_outcomes', 'success_criteria',
             'is_active', 'created_at', 'updated_at'
         ]
@@ -156,7 +156,7 @@ class ActivityProgressSerializer(serializers.ModelSerializer):
         model = ActivityProgress
         fields = [
             'id', 'activity_assignment', 'recorder', 'session_date', 'status',
-            'performer', 'duration_actual', 'completion_percentage', 'notes',
+            'performer', 'duration_actual', 'completion_percentage', 'score', 'notes',
             'challenges', 'improvements', 'student_engagement', 'difficulty_level',
             'created_at', 'updated_at'
         ]
@@ -168,7 +168,7 @@ class ActivityProgressCreateSerializer(serializers.ModelSerializer):
         model = ActivityProgress
         fields = [
             'activity_assignment', 'session_date', 'status', 'performer',
-            'duration_actual', 'completion_percentage', 'notes', 'challenges',
+            'duration_actual', 'completion_percentage', 'score', 'notes', 'challenges',
             'improvements', 'student_engagement', 'difficulty_level'
         ]
 

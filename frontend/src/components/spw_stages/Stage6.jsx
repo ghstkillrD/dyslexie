@@ -14,6 +14,7 @@ export default function Stage6({ student_id, canEdit, isCompleted, onComplete })
     status: 'completed',
     duration_actual: '',
     completion_percentage: 100,
+    score: 8,
     notes: '',
     challenges: '',
     improvements: '',
@@ -77,6 +78,7 @@ export default function Stage6({ student_id, canEdit, isCompleted, onComplete })
         status: 'completed',
         duration_actual: '',
         completion_percentage: 100,
+        score: 8,
         notes: '',
         challenges: '',
         improvements: '',
@@ -88,6 +90,21 @@ export default function Stage6({ student_id, canEdit, isCompleted, onComplete })
       console.error('Error recording progress:', error);
       alert('Error recording progress. Please try again.');
     }
+  };
+
+  const handleStatusChange = (newStatus) => {
+    const updatedForm = { ...progressForm, status: newStatus };
+    
+    // Reset score based on status
+    if (newStatus === 'not_started' || newStatus === 'missed') {
+      updatedForm.score = '';
+      updatedForm.completion_percentage = 0;
+    } else if (newStatus === 'completed') {
+      updatedForm.completion_percentage = 100;
+      if (!updatedForm.score) updatedForm.score = 8; // Default good score
+    }
+    
+    setProgressForm(updatedForm);
   };
 
   const openProgressModal = (activity) => {
@@ -379,7 +396,7 @@ export default function Stage6({ student_id, canEdit, isCompleted, onComplete })
                 </label>
                 <select
                   value={progressForm.status}
-                  onChange={(e) => setProgressForm({...progressForm, status: e.target.value})}
+                  onChange={(e) => handleStatusChange(e.target.value)}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="completed">Completed</option>
@@ -414,6 +431,21 @@ export default function Stage6({ student_id, canEdit, isCompleted, onComplete })
                   value={progressForm.completion_percentage}
                   onChange={(e) => setProgressForm({...progressForm, completion_percentage: e.target.value})}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Score (out of 10)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="10"
+                  value={progressForm.score}
+                  onChange={(e) => setProgressForm({...progressForm, score: e.target.value})}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter score (optional)"
                 />
               </div>
             </div>

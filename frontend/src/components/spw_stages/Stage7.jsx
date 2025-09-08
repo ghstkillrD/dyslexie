@@ -424,8 +424,9 @@ export default function Stage7({ student_id, canEdit, isCompleted, onComplete })
               <textarea
                 value={evaluationForm.task_performance_summary}
                 onChange={(e) => handleFormChange('task_performance_summary', e.target.value)}
-                className="w-full border rounded-md px-3 py-2 h-24"
+                className={`w-full border rounded-md px-3 py-2 h-24 ${evaluation?.case_completed ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                 placeholder="Summarize task performance and scoring results..."
+                disabled={evaluation?.case_completed}
               />
             </div>
             <div>
@@ -433,8 +434,9 @@ export default function Stage7({ student_id, canEdit, isCompleted, onComplete })
               <textarea
                 value={evaluationForm.activity_progress_summary}
                 onChange={(e) => handleFormChange('activity_progress_summary', e.target.value)}
-                className="w-full border rounded-md px-3 py-2 h-24"
+                className={`w-full border rounded-md px-3 py-2 h-24 ${evaluation?.case_completed ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                 placeholder="Summarize therapeutic activity progress and outcomes..."
+                disabled={evaluation?.case_completed}
               />
             </div>
           </div>
@@ -448,7 +450,8 @@ export default function Stage7({ student_id, canEdit, isCompleted, onComplete })
                 <select
                   value={evaluationForm.final_diagnosis}
                   onChange={(e) => handleFormChange('final_diagnosis', e.target.value)}
-                  className="w-full border rounded-md px-3 py-2"
+                  disabled={evaluation?.case_completed}
+                  className={`w-full border rounded-md px-3 py-2 ${evaluation?.case_completed ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                 >
                   <option value="no_dyslexia">No Dyslexia Indicated</option>
                   <option value="mild_dyslexia">Mild Dyslexia</option>
@@ -465,7 +468,8 @@ export default function Stage7({ student_id, canEdit, isCompleted, onComplete })
                   max="10"
                   value={evaluationForm.diagnosis_confidence}
                   onChange={(e) => handleFormChange('diagnosis_confidence', parseInt(e.target.value))}
-                  className="w-full border rounded-md px-3 py-2"
+                  disabled={evaluation?.case_completed}
+                  className={`w-full border rounded-md px-3 py-2 ${evaluation?.case_completed ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                 />
               </div>
             </div>
@@ -474,7 +478,8 @@ export default function Stage7({ student_id, canEdit, isCompleted, onComplete })
               <textarea
                 value={evaluationForm.supporting_evidence}
                 onChange={(e) => handleFormChange('supporting_evidence', e.target.value)}
-                className="w-full border rounded-md px-3 py-2 h-24"
+                disabled={evaluation?.case_completed}
+                className={`w-full border rounded-md px-3 py-2 h-24 ${evaluation?.case_completed ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                 placeholder="Key evidence supporting the diagnosis..."
               />
             </div>
@@ -489,7 +494,8 @@ export default function Stage7({ student_id, canEdit, isCompleted, onComplete })
                 <select
                   value={evaluationForm.intervention_priority}
                   onChange={(e) => handleFormChange('intervention_priority', e.target.value)}
-                  className="w-full border rounded-md px-3 py-2"
+                  disabled={evaluation?.case_completed}
+                  className={`w-full border rounded-md px-3 py-2 ${evaluation?.case_completed ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                 >
                   <option value="low">Low Priority</option>
                   <option value="medium">Medium Priority</option>
@@ -502,7 +508,8 @@ export default function Stage7({ student_id, canEdit, isCompleted, onComplete })
                 <textarea
                   value={evaluationForm.short_term_goals}
                   onChange={(e) => handleFormChange('short_term_goals', e.target.value)}
-                  className="w-full border rounded-md px-3 py-2 h-24"
+                  disabled={evaluation?.case_completed}
+                  className={`w-full border rounded-md px-3 py-2 h-24 ${evaluation?.case_completed ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   placeholder="Specific goals for the next 3-6 months..."
                 />
               </div>
@@ -511,7 +518,8 @@ export default function Stage7({ student_id, canEdit, isCompleted, onComplete })
                 <textarea
                   value={evaluationForm.long_term_goals}
                   onChange={(e) => handleFormChange('long_term_goals', e.target.value)}
-                  className="w-full border rounded-md px-3 py-2 h-24"
+                  disabled={evaluation?.case_completed}
+                  className={`w-full border rounded-md px-3 py-2 h-24 ${evaluation?.case_completed ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   placeholder="Long-term goals for 1-2 years..."
                 />
               </div>
@@ -520,7 +528,8 @@ export default function Stage7({ student_id, canEdit, isCompleted, onComplete })
                 <textarea
                   value={evaluationForm.recommended_interventions}
                   onChange={(e) => handleFormChange('recommended_interventions', e.target.value)}
-                  className="w-full border rounded-md px-3 py-2 h-24"
+                  disabled={evaluation?.case_completed}
+                  className={`w-full border rounded-md px-3 py-2 h-24 ${evaluation?.case_completed ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   placeholder="Specific intervention strategies and methods..."
                 />
               </div>
@@ -537,7 +546,8 @@ export default function Stage7({ student_id, canEdit, isCompleted, onComplete })
                   type="text"
                   value={evaluationForm.follow_up_timeline}
                   onChange={(e) => handleFormChange('follow_up_timeline', e.target.value)}
-                  className="w-full border rounded-md px-3 py-2"
+                  disabled={evaluation?.case_completed}
+                  className={`w-full border rounded-md px-3 py-2 ${evaluation?.case_completed ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   placeholder="e.g., 3 months, 6 months, annually"
                 />
               </div>
@@ -546,7 +556,8 @@ export default function Stage7({ student_id, canEdit, isCompleted, onComplete })
                 <textarea
                   value={evaluationForm.monitoring_indicators}
                   onChange={(e) => handleFormChange('monitoring_indicators', e.target.value)}
-                  className="w-full border rounded-md px-3 py-2 h-20"
+                  disabled={evaluation?.case_completed}
+                  className={`w-full border rounded-md px-3 py-2 h-20 ${evaluation?.case_completed ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   placeholder="Key indicators to monitor progress..."
                 />
               </div>
@@ -595,7 +606,8 @@ export default function Stage7({ student_id, canEdit, isCompleted, onComplete })
                 <textarea
                   value={evaluationForm.clinical_notes}
                   onChange={(e) => handleFormChange('clinical_notes', e.target.value)}
-                  className="w-full border rounded-md px-3 py-2 h-20"
+                  disabled={evaluation?.case_completed}
+                  className={`w-full border rounded-md px-3 py-2 h-20 ${evaluation?.case_completed ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   placeholder="Additional clinical observations..."
                 />
               </div>
@@ -604,7 +616,8 @@ export default function Stage7({ student_id, canEdit, isCompleted, onComplete })
                 <textarea
                   value={evaluationForm.referrals_needed}
                   onChange={(e) => handleFormChange('referrals_needed', e.target.value)}
-                  className="w-full border rounded-md px-3 py-2 h-20"
+                  disabled={evaluation?.case_completed}
+                  className={`w-full border rounded-md px-3 py-2 h-20 ${evaluation?.case_completed ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   placeholder="Referrals to other specialists if needed..."
                 />
               </div>
@@ -658,7 +671,7 @@ export default function Stage7({ student_id, canEdit, isCompleted, onComplete })
                 <select
                   value={evaluationForm.therapy_decision}
                   onChange={(e) => handleFormChange('therapy_decision', e.target.value)}
-                  className="w-full border rounded-md px-3 py-2"
+                  className={`w-full border rounded-md px-3 py-2 ${(evaluation?.case_completed) ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   disabled={!evaluation || evaluation?.case_completed}
                 >
                   <option value="pending">Decision Pending</option>
@@ -679,7 +692,7 @@ export default function Stage7({ student_id, canEdit, isCompleted, onComplete })
                   <textarea
                     value={evaluationForm.therapy_termination_reason}
                     onChange={(e) => handleFormChange('therapy_termination_reason', e.target.value)}
-                    className="w-full border rounded-md px-3 py-2 h-20"
+                    className={`w-full border rounded-md px-3 py-2 h-20 ${evaluation?.case_completed ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                     placeholder="Explain why therapy is being completed (e.g., student has achieved learning goals, no longer shows signs of dyslexia, etc.)"
                     disabled={evaluation?.case_completed}
                   />

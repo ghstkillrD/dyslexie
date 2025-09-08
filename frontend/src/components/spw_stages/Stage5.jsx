@@ -9,6 +9,7 @@ export default function Stage5({ student_id, canEdit, isCompleted, onComplete })
     activity_type: 'reading',
     description: '',
     instructions: '',
+    difficulty: 'medium',
     frequency: 'daily',
     duration_minutes: 30,
     target_audience: 'both',
@@ -37,6 +38,12 @@ export default function Stage5({ student_id, canEdit, isCompleted, onComplete })
     { value: 'weekly', label: 'Weekly' },
     { value: 'bi-weekly', label: 'Twice a Week' },
     { value: 'monthly', label: 'Monthly' }
+  ];
+
+  const difficulties = [
+    { value: 'easy', label: 'Easy' },
+    { value: 'medium', label: 'Medium' },
+    { value: 'hard', label: 'Hard' }
   ];
 
   const targetAudiences = [
@@ -123,6 +130,7 @@ export default function Stage5({ student_id, canEdit, isCompleted, onComplete })
         activity_type: 'reading',
         description: '',
         instructions: '',
+        difficulty: 'medium',
         frequency: 'daily',
         duration_minutes: 30,
         target_audience: 'both',
@@ -249,7 +257,13 @@ export default function Stage5({ student_id, canEdit, isCompleted, onComplete })
                   </span>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-3">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm mb-3">
+                  <div>
+                    <span className="text-gray-600">Difficulty:</span> 
+                    <span className="ml-1 font-medium">
+                      {difficulties.find(d => d.value === activity.difficulty)?.label || 'Medium'}
+                    </span>
+                  </div>
                   <div>
                     <span className="text-gray-600">Frequency:</span> 
                     <span className="ml-1 font-medium">
@@ -355,7 +369,19 @@ export default function Stage5({ student_id, canEdit, isCompleted, onComplete })
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Difficulty</label>
+                  <select
+                    value={newActivity.difficulty}
+                    onChange={(e) => handleInputChange('difficulty', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  >
+                    {difficulties.map(diff => (
+                      <option key={diff.value} value={diff.value}>{diff.label}</option>
+                    ))}
+                  </select>
+                </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Frequency</label>
                   <select

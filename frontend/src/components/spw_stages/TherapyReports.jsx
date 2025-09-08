@@ -162,7 +162,7 @@ export default function TherapyReports({ student_id }) {
                       </div>
                       {report.diagnosis && (
                         <div className="md:col-span-2">
-                          <span className="font-medium">Diagnosis:</span> {report.diagnosis.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                          <span className="font-medium">Diagnosis:</span> {report.diagnosis.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                         </div>
                       )}
                     </>
@@ -224,7 +224,7 @@ export default function TherapyReports({ student_id }) {
                   <div className="space-y-3">
                     {detailedReport.evaluation_summary.diagnosis && (
                       <div>
-                        <span className="font-medium">Diagnosis:</span> {detailedReport.evaluation_summary.diagnosis.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                        <span className="font-medium">Diagnosis:</span> {detailedReport.evaluation_summary.diagnosis.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                       </div>
                     )}
                     {detailedReport.evaluation_summary.intervention_priority && (
@@ -284,7 +284,7 @@ export default function TherapyReports({ student_id }) {
                           <div key={index} className="border-l-4 border-blue-200 pl-4 py-2">
                             <div className="font-medium">{activity.activity_name}</div>
                             <div className="text-sm text-gray-600">
-                              Type: {activity.activity_type} | Difficulty: {activity.difficulty_level} | Duration: {activity.estimated_duration} mins
+                              Type: {activity.activity_type} | Difficulty: {activity.difficulty} | Duration: {activity.duration_minutes} mins
                             </div>
                             <div className="text-sm text-gray-700 mt-1">{activity.description}</div>
                           </div>
@@ -304,10 +304,10 @@ export default function TherapyReports({ student_id }) {
                           <div key={index} className="border-l-4 border-green-200 pl-4 py-2">
                             <div className="font-medium">{progress.activity_name}</div>
                             <div className="text-sm text-gray-600">
-                              Date: {formatDate(progress.session_date)} | Performer: {progress.performer} | Score: {progress.performance_score}/10 | Status: {progress.completion_status}
+                              Date: {formatDate(progress.session_date)} | Performer: {progress.performer} | Score: {progress.score ? `${progress.score}/10` : 'N/A'} | Status: {progress.status}
                             </div>
-                            {progress.observations && (
-                              <div className="text-sm text-gray-700 mt-1">Observations: {progress.observations}</div>
+                            {progress.notes && (
+                              <div className="text-sm text-gray-700 mt-1">Notes: {progress.notes}</div>
                             )}
                           </div>
                         ))}
@@ -323,7 +323,7 @@ export default function TherapyReports({ student_id }) {
                       <h5 className="font-semibold mb-3">Stage 7: Final Evaluation</h5>
                       <div className="space-y-3 text-sm">
                         <div>
-                          <span className="font-medium">Diagnosis:</span> {detailedReport.final_evaluation.final_diagnosis?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                          <span className="font-medium">Diagnosis:</span> {detailedReport.final_evaluation.final_diagnosis?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                         </div>
                         <div>
                           <span className="font-medium">Confidence:</span> {detailedReport.final_evaluation.diagnosis_confidence}/10
