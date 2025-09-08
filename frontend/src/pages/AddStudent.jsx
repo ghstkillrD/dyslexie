@@ -15,6 +15,7 @@ export default function AddStudent() {
   const [parents, setParents] = useState([])
   const [selectedDoctors, setSelectedDoctors] = useState([])
   const [selectedParents, setSelectedParents] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -25,8 +26,12 @@ export default function AddStudent() {
     .then(res => {
       setDoctors(res.data.filter(u => u.role === 'doctor'))
       setParents(res.data.filter(u => u.role === 'parent'))
+      setIsLoading(false)
     })
-    .catch(err => console.error(err))
+    .catch(err => {
+      console.error(err)
+      setIsLoading(false)
+    })
   }, [])
 
   const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value })
@@ -60,41 +65,195 @@ export default function AddStudent() {
     }
   }
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-gray-50 flex items-center justify-center">
+        <div className="bg-white rounded-xl shadow-sm p-8 border border-gray-100">
+          <div className="flex items-center space-x-3">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            <p className="text-gray-600">Loading user data...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-4">Add New Student</h2>
-      <form onSubmit={handleSubmit} className="space-y-3">
-        <input type="text" name="name" placeholder="Name" value={form.name} onChange={handleChange} className="border px-2 py-1 w-full" required />
-        <input type="date" name="birthday" value={form.birthday} onChange={handleChange} className="border px-2 py-1 w-full" required />
-        <input type="text" name="school" placeholder="School" value={form.school} onChange={handleChange} className="border px-2 py-1 w-full" required />
-        <input type="text" name="grade" placeholder="Grade" value={form.grade} onChange={handleChange} className="border px-2 py-1 w-full" required />
-        <select name="gender" value={form.gender} onChange={handleChange} className="border px-2 py-1 w-full" required>
-          <option value="">Select Gender</option>
-          <option value="male">Male</option>
-          <option value="female">Female</option>
-        </select>
-
-        <div className="mt-4">
-          <UserSelectorTable
-            users={doctors}
-            selected={selectedDoctors}
-            onToggle={toggleDoctor}
-            title="Select Doctors"
-          />
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-gray-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between py-6">
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => navigate('/teacher/students')}
+                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+                title="Back to Students"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">Add New Student</h1>
+                <p className="text-gray-600 mt-1">Register a new student and assign medical professionals and parents</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-3">
+              <div className="text-right">
+                <p className="text-sm font-medium text-gray-900">New Registration</p>
+                <p className="text-sm text-gray-500">Student Profile</p>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
 
-        <div className="mt-4">
-          <UserSelectorTable
-            users={parents}
-            selected={selectedParents}
-            onToggle={toggleParent}
-            title="Select Parents"
-          />
-        </div>
-        
-        <button type="submit" className="bg-green-500 text-white px-3 py-1 rounded">Save</button>
-        <button type="button" onClick={() => navigate('/teacher/students')} className="ml-2 bg-gray-500 text-white px-3 py-1 rounded">Cancel</button>
-      </form>
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Student Information Card */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">Student Information</h2>
+                  <p className="text-sm text-gray-600">Enter the student's basic details and academic information</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Full Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={form.name}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+                    placeholder="Enter student's full name"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Date of Birth <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    name="birthday"
+                    value={form.birthday}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    School <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="school"
+                    value={form.school}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+                    placeholder="Enter school name"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Grade <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="grade"
+                    value={form.grade}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+                    placeholder="Enter grade level"
+                    required
+                  />
+                </div>
+                
+                <div className="md:col-span-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Gender <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="gender"
+                    value={form.gender}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+                    required
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Doctor Assignment Card */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+            <UserSelectorTable
+              users={doctors}
+              selected={selectedDoctors}
+              onToggle={toggleDoctor}
+              title="Select Doctors"
+              icon="medical"
+              description="Assign medical professionals to monitor this student's therapy progress"
+            />
+          </div>
+
+          {/* Parent Assignment Card */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+            <UserSelectorTable
+              users={parents}
+              selected={selectedParents}
+              onToggle={toggleParent}
+              title="Select Parents"
+              icon="family"
+              description="Link parents or guardians to receive updates on their child's progress"
+            />
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center justify-end space-x-4 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <button
+              type="button"
+              onClick={() => navigate('/teacher/students')}
+              className="px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors duration-200"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200 flex items-center space-x-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              <span>Add Student</span>
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   )
 }

@@ -123,6 +123,29 @@ class HandwritingSampleSerializer(serializers.ModelSerializer):
         return None
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Remove username field and add email field
+        self.fields['email'] = serializers.EmailField()
+        del self.fields['username']
+
+    def validate(self, attrs):
+        # Get email and password from the request
+        email = attrs.get('email')
+        password = attrs.get('password')
+        
+        # Find user by email
+        try:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            user = User.objects.get(email=email)
+            attrs['username'] = user.username  # Set username for parent validation
+        except User.DoesNotExist:
+            raise serializers.ValidationError('Invalid email or password')
+        
+        # Call parent validation with username
+        return super().validate(attrs)
+
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
