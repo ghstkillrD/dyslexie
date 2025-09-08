@@ -356,10 +356,14 @@ class TherapySessionReport(models.Model):
                 'activity_name': assignment.activity_name,
                 'activity_type': assignment.activity_type,
                 'description': assignment.description,
-                'difficulty_level': assignment.difficulty_level,
-                'estimated_duration': assignment.estimated_duration,
+                'frequency': assignment.frequency,
+                'duration_minutes': assignment.duration_minutes,
+                'target_audience': assignment.target_audience,
                 'instructions': assignment.instructions,
-                'assigned_date': assignment.assigned_date.isoformat(),
+                'expected_outcomes': assignment.expected_outcomes,
+                'success_criteria': assignment.success_criteria,
+                'created_at': assignment.created_at.isoformat(),
+                'is_active': assignment.is_active,
             })
         
         # Collect Stage 6 data (Activity Progress)
@@ -368,13 +372,16 @@ class TherapySessionReport(models.Model):
             activity_progress.append({
                 'activity_name': progress.activity_assignment.activity_name,
                 'session_date': progress.session_date.isoformat(),
-                'performer': progress.performer.username,
-                'performance_score': progress.performance_score,
-                'completion_status': progress.completion_status,
-                'observations': progress.observations,
-                'difficulties_noted': progress.difficulties_noted,
-                'improvement_areas': progress.improvement_areas,
-                'next_session_focus': progress.next_session_focus,
+                'performer': progress.performer,
+                'status': progress.status,
+                'completion_percentage': progress.completion_percentage,
+                'duration_actual': progress.duration_actual,
+                'notes': progress.notes,
+                'challenges': progress.challenges,
+                'improvements': progress.improvements,
+                'student_engagement': progress.student_engagement,
+                'difficulty_level': progress.difficulty_level,
+                'created_at': progress.created_at.isoformat(),
             })
         
         # Collect Stage 7 data (Final Evaluation)
@@ -397,8 +404,6 @@ class TherapySessionReport(models.Model):
                 'recommended_interventions': evaluation.recommended_interventions,
                 'follow_up_timeline': evaluation.follow_up_timeline,
                 'monitoring_indicators': evaluation.monitoring_indicators,
-                'teacher_recommendations': evaluation.teacher_recommendations,
-                'parent_recommendations': evaluation.parent_recommendations,
                 'clinical_notes': evaluation.clinical_notes,
                 'referrals_needed': evaluation.referrals_needed,
                 'case_completed': evaluation.case_completed,
@@ -412,8 +417,8 @@ class TherapySessionReport(models.Model):
         
         # Try to get actual session dates from activity assignments
         if student.activity_assignments.exists():
-            first_assignment = student.activity_assignments.order_by('assigned_date').first()
-            session_start_date = first_assignment.assigned_date
+            first_assignment = student.activity_assignments.order_by('created_at').first()
+            session_start_date = first_assignment.created_at
         
         return cls.objects.create(
             student=student,

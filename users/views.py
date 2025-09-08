@@ -14,6 +14,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from datetime import datetime, timezone
+from django.utils import timezone as django_timezone
 
 class UserListCreateView(generics.ListCreateAPIView):
     queryset = User.objects.all()
@@ -928,7 +929,7 @@ def terminate_therapy_session(request, student_id):
         return Response({"error": "Only doctors can terminate therapy sessions"}, status=403)
     
     try:
-        student = Student.objects.get(id=student_id)
+        student = Student.objects.get(student_id=student_id)
         evaluation = student.final_evaluation
         
         # Check if doctor has access to this student
@@ -942,7 +943,7 @@ def terminate_therapy_session(request, student_id):
         from .models import TherapySessionReport
         report = TherapySessionReport.create_report_from_current_data(student)
         report.session_outcome = 'terminated'
-        report.session_end_date = timezone.now()
+        report.session_end_date = django_timezone.now()
         report.save()
         
         # Terminate therapy
@@ -973,7 +974,7 @@ def restart_therapy_from_stage5(request, student_id):
         return Response({"error": "Only doctors can restart therapy sessions"}, status=403)
     
     try:
-        student = Student.objects.get(id=student_id)
+        student = Student.objects.get(student_id=student_id)
         evaluation = student.final_evaluation
         
         # Check if doctor has access to this student
@@ -984,7 +985,7 @@ def restart_therapy_from_stage5(request, student_id):
         from .models import TherapySessionReport
         report = TherapySessionReport.create_report_from_current_data(student)
         report.session_outcome = 'continued'
-        report.session_end_date = timezone.now()
+        report.session_end_date = django_timezone.now()
         report.save()
         
         # Clear current activity assignments and progress for new session
@@ -1009,7 +1010,10 @@ def restart_therapy_from_stage5(request, student_id):
     except Student.DoesNotExist:
         return Response({"error": "Student not found"}, status=404)
     except Exception as e:
-        return Response({"error": str(e)}, status=500)
+        import traceback
+        print(f"Error in restart_therapy_from_stage5: {str(e)}")
+        print(f"Traceback: {traceback.format_exc()}")
+        return Response({"error": f"Internal error: {str(e)}"}, status=500)
 
 
 @api_view(['GET'])
@@ -1020,7 +1024,7 @@ def get_therapy_session_reports(request, student_id):
     Accessible by teachers, parents, and doctors with appropriate access
     """
     try:
-        student = Student.objects.get(id=student_id)
+        student = Student.objects.get(student_id=student_id)
         
         # Check access permissions
         user_role = request.user.role
@@ -1094,7 +1098,7 @@ def get_detailed_therapy_report(request, student_id, session_number):
     Accessible by teachers, parents, and doctors with appropriate access
     """
     try:
-        student = Student.objects.get(id=student_id)
+        student = Student.objects.get(student_id=student_id)
         
         # Check access permissions
         user_role = request.user.role
