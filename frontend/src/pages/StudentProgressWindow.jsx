@@ -34,27 +34,32 @@ export default function StudentProgressWindow() {
         role: decoded.role
       });
     }
-    axios.get(`http://127.0.0.1:8000/api/users/students/${student_id}/`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-    .then((res) => {
-        setStudent(res.data);
-        if (res.data.current_stage || res.data.stage_progress) {
-          // Accept both formats: current_stage or nested stage_progress
-          const stageData = res.data.stage_progress || {};
-          setProgress({
-            current_stage: stageData.current_stage || res.data.current_stage || 1,
-            completed_stages: stageData.completed_stages || []
-          });
-          setCurrentStage(stageData.current_stage || res.data.current_stage || 1);
-        }
-        setIsLoading(false);
-      })
-      .catch(err => {
-        console.error(err);
-        setIsLoading(false);
-      });
+    fetchStudentData();
   }, [student_id]);
+
+  const fetchStudentData = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`http://127.0.0.1:8000/api/users/students/${student_id}/`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setStudent(res.data);
+      if (res.data.current_stage || res.data.stage_progress) {
+        // Accept both formats: current_stage or nested stage_progress
+        const stageData = res.data.stage_progress || {};
+        setProgress({
+          current_stage: stageData.current_stage || res.data.current_stage || 1,
+          completed_stages: stageData.completed_stages || []
+        });
+        setCurrentStage(stageData.current_stage || res.data.current_stage || 1);
+      }
+      setIsLoading(false);
+    } catch (err) {
+      console.error(err);
+      setIsLoading(false);
+    }
+  };
 
   const stages = [
     { 
@@ -107,13 +112,13 @@ export default function StudentProgressWindow() {
 
   const handleStageClick = (index) => {
     const stageNumber = index + 1;
-    if (stageNumber <= progress.current_stage) {
+    if (stageNumber <= (progress?.current_stage || 1)) {
       setCurrentStage(stageNumber);
     }
   };
 
-  const isLocked = (index) => index + 1 > progress.current_stage;
-  const isCompleted = (index) => progress.completed_stages.includes(index + 1);
+  const isLocked = (index) => index + 1 > (progress?.current_stage || 1);
+  const isCompleted = (index) => progress?.completed_stages?.includes(index + 1) || false;
 
   const canEditStage = (stageNumber) => {
     const allowed = stageRoles[stageNumber] || [];
@@ -121,11 +126,22 @@ export default function StudentProgressWindow() {
   };
 
   const handleStageComplete = (data) => {
-    setProgress({
-      current_stage: data.current_stage,
-      completed_stages: data.completed_stages
-    });
-    setCurrentStage(data.current_stage);
+    // Only update if we have proper stage data
+    if (data && data.current_stage !== undefined && data.completed_stages !== undefined) {
+      setProgress({
+        current_stage: data.current_stage,
+        completed_stages: data.completed_stages
+      });
+      setCurrentStage(data.current_stage);
+    } else {
+      // If no proper stage data, refresh from server
+      fetchStudentData();
+    }
+  };
+
+  const handleTherapyComplete = () => {
+    // Refresh student data after therapy completion to get updated case status
+    fetchStudentData();
   };
 
   const handleTerminateProgress = async () => {
@@ -255,7 +271,7 @@ export default function StudentProgressWindow() {
             <div className="flex items-center space-x-4">
               <div className="text-right">
                 <p className="text-sm font-medium text-gray-900">Current Stage</p>
-                <p className="text-sm text-gray-500">Stage {progress.current_stage} of 7</p>
+                <p className="text-sm text-gray-500">Stage {progress?.current_stage || 1} of 7</p>
               </div>
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
                 <span className="text-2xl">{stages[currentStage - 1]?.icon}</span>
@@ -270,12 +286,12 @@ export default function StudentProgressWindow() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-700">Overall Progress</span>
-            <span className="text-sm text-gray-500">{Math.round((progress.completed_stages.length / 7) * 100)}% Complete</span>
+            <span className="text-sm text-gray-500">{Math.round(((progress?.completed_stages?.length || 0) / 7) * 100)}% Complete</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div 
               className="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full transition-all duration-500"
-              style={{ width: `${(progress.completed_stages.length / 7) * 100}%` }}
+              style={{ width: `${((progress?.completed_stages?.length || 0) / 7) * 100}%` }}
             ></div>
           </div>
         </div>
@@ -330,7 +346,7 @@ export default function StudentProgressWindow() {
             </div>
 
             {/* Terminate Progress Button - Only visible to teachers and only after Stage 1 completion */}
-            {userRole === 'teacher' && progress.completed_stages.includes(1) && (
+            {userRole === 'teacher' && progress?.completed_stages?.includes(1) && (
               <button
                 className="inline-flex items-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors duration-200"
                 onClick={handleTerminateProgress}
@@ -423,7 +439,7 @@ export default function StudentProgressWindow() {
                             </svg>
                             Completed
                           </span>
-                        ) : currentStage === progress.current_stage ? (
+                        ) : currentStage === (progress?.current_stage || 1) ? (
                           <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                             <svg className="w-3 h-3 mr-1 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -439,7 +455,7 @@ export default function StudentProgressWindow() {
                     </div>
                     
                     {/* Role and Permission Info */}
-                    {!canEditStage(currentStage) && !isCompleted(currentStage - 1) && currentStage === progress.current_stage && (
+                    {!canEditStage(currentStage) && !isCompleted(currentStage - 1) && currentStage === (progress?.current_stage || 1) && (
                       <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
                         <div className="flex items-center">
                           <svg className="w-5 h-5 text-orange-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -528,6 +544,7 @@ export default function StudentProgressWindow() {
                         canEdit={canEditStage(7)}
                         isCompleted={isCompleted(6)}
                         onComplete={handleStageComplete}
+                        onTherapyComplete={handleTherapyComplete}
                       />
                     )}
                   </div>

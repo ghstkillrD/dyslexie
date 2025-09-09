@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 
-export default function Stage7({ student_id, canEdit, isCompleted, onComplete }) {
+export default function Stage7({ student_id, canEdit, isCompleted, onComplete, onTherapyComplete }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [userRole, setUserRole] = useState(null);
@@ -227,17 +227,10 @@ export default function Stage7({ student_id, canEdit, isCompleted, onComplete })
     try {
       const token = localStorage.getItem('token');
       
-      // First terminate the therapy with the reason
+      // Terminate the therapy with the reason (this automatically completes the case)
       const terminateResponse = await axios.post(
         `http://127.0.0.1:8000/api/users/students/${student_id}/terminate-therapy/`,
         { termination_reason: reason },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      
-      // Then complete the evaluation
-      const completeResponse = await axios.post(
-        `http://127.0.0.1:8000/api/users/students/${student_id}/complete-evaluation/`,
-        {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
@@ -246,12 +239,17 @@ export default function Stage7({ student_id, canEdit, isCompleted, onComplete })
       // Refresh the evaluation data
       await fetchExistingEvaluation();
       
-      if (onComplete) {
-        onComplete(completeResponse.data);
+      // Call the therapy completion callback to refresh parent data
+      if (onTherapyComplete) {
+        onTherapyComplete();
       }
     } catch (error) {
       console.error('Error completing therapy:', error);
-      alert('Error completing therapy. Please try again.');
+      if (error.response?.data?.error) {
+        alert(`Error: ${error.response.data.error}`);
+      } else {
+        alert('Error completing therapy. Please try again.');
+      }
     } finally {
       setCompletingCase(false);
     }
