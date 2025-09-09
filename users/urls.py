@@ -1,5 +1,6 @@
 from django.urls import path, include
-from .views import (UserListCreateView, RegisterView, StudentViewSet, StudentUserLinkViewSet, 
+from .views import (UserListCreateView, RegisterView, ProfileView, PasswordChangeView, AccountDeleteView,
+                   StudentViewSet, StudentUserLinkViewSet, 
                    AnalyzeHandwritingView, EvaluateTasksView, FinalDiagnosisView, MyTokenObtainPairView,
                    MyTokenRefreshView, TokenValidateView, ExtendSessionView,
                    get_student_activities_for_tracking, record_activity_progress, 
@@ -18,6 +19,9 @@ router.register(r'student-links', StudentUserLinkViewSet, basename='student-link
 urlpatterns = [
     path('', UserListCreateView.as_view(), name='user-list-create'),
     path('register/', RegisterView.as_view(), name='register'),
+    path('profile/', ProfileView.as_view(), name='profile'),
+    path('profile/change-password/', PasswordChangeView.as_view(), name='change-password'),
+    path('profile/delete-account/', AccountDeleteView.as_view(), name='delete-account'),
     path('token/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', MyTokenRefreshView.as_view(), name='token_refresh'),
     path('token/validate/', TokenValidateView.as_view(), name='token_validate'),

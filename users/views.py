@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.decorators import api_view, permission_classes
 from .models import User, Student, StudentUserLink, StageProgress, HandwritingSample, StudentTask, AssessmentSummary, ActivityAssignment, ActivityProgress, FinalEvaluation, TherapySessionReport, StakeholderRecommendation
-from .serializers import UserSerializer, RegisterSerializer, StudentSerializer, StudentUserLinkSerializer, LinkedUserSerializer, MyTokenObtainPairSerializer, HandwritingSampleSerializer, StudentTaskSerializer, AssessmentSummarySerializer, ActivityAssignmentSerializer, ActivityProgressSerializer, ActivityProgressCreateSerializer, FinalEvaluationSerializer, FinalEvaluationCreateSerializer, StakeholderRecommendationSerializer, StakeholderRecommendationCreateSerializer
+from .serializers import UserSerializer, RegisterSerializer, ProfileSerializer, ProfileUpdateSerializer, PasswordChangeSerializer, StudentSerializer, StudentUserLinkSerializer, LinkedUserSerializer, MyTokenObtainPairSerializer, HandwritingSampleSerializer, StudentTaskSerializer, AssessmentSummarySerializer, ActivityAssignmentSerializer, ActivityProgressSerializer, ActivityProgressCreateSerializer, FinalEvaluationSerializer, FinalEvaluationCreateSerializer, StakeholderRecommendationSerializer, StakeholderRecommendationCreateSerializer
 from rest_framework.permissions import IsAuthenticated
 from .permissions import IsTeacherOrReadOnly, IsLinkedDoctorOrParentReadOnly
 from rest_framework.decorators import action
@@ -28,6 +28,77 @@ class RegisterView(APIView):
             serializer.save()
             return Response({"message": "User registered successfully."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class ProfileView(APIView):
+    """View and update user profile"""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Get current user's profile"""
+        serializer = ProfileSerializer(request.user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def put(self, request):
+        """Update user profile (username and phone only)"""
+        serializer = ProfileUpdateSerializer(
+            request.user, 
+            data=request.data, 
+            context={'request': request}
+        )
+        if serializer.is_valid():
+            serializer.save()
+            # Return updated profile
+            profile_serializer = ProfileSerializer(request.user)
+            return Response({
+                "message": "Profile updated successfully.",
+                "profile": profile_serializer.data
+            }, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class PasswordChangeView(APIView):
+    """Change user password"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        serializer = PasswordChangeSerializer(
+            data=request.data,
+            context={'request': request}
+        )
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "message": "Password changed successfully."
+            }, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class AccountDeleteView(APIView):
+    """Delete user account and all associated data"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        """Delete account with password confirmation"""
+        password = request.data.get('password')
+        
+        if not password:
+            return Response({
+                "error": "Password is required to delete account."
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Verify password
+        if not request.user.check_password(password):
+            return Response({
+                "error": "Incorrect password."
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Store username for response
+        username = request.user.username
+        
+        # Delete the user (this will cascade delete related data)
+        request.user.delete()
+        
+        return Response({
+            "message": f"Account '{username}' has been permanently deleted."
+        }, status=status.HTTP_200_OK)
 
 class StudentViewSet(viewsets.ModelViewSet):
     queryset = Student.objects.all()

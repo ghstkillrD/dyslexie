@@ -24,6 +24,52 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
         return user
 
+class ProfileSerializer(serializers.ModelSerializer):
+    """Serializer for viewing user profile"""
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'phone', 'role', 'date_joined', 'last_login']
+        read_only_fields = ['id', 'email', 'role', 'date_joined', 'last_login']
+
+class ProfileUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for updating user profile (excluding email and role)"""
+    class Meta:
+        model = User
+        fields = ['username', 'phone']
+    
+    def validate_username(self, value):
+        """Ensure username is unique except for current user"""
+        user = self.context['request'].user
+        if User.objects.exclude(pk=user.pk).filter(username=value).exists():
+            raise serializers.ValidationError("This username is already taken.")
+        return value
+
+class PasswordChangeSerializer(serializers.Serializer):
+    """Serializer for changing user password"""
+    current_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True, validators=[validate_password])
+    confirm_password = serializers.CharField(required=True)
+    
+    def validate_current_password(self, value):
+        """Validate current password"""
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("Current password is incorrect.")
+        return value
+    
+    def validate(self, attrs):
+        """Validate that new passwords match"""
+        if attrs['new_password'] != attrs['confirm_password']:
+            raise serializers.ValidationError("New passwords do not match.")
+        return attrs
+    
+    def save(self):
+        """Update user password"""
+        user = self.context['request'].user
+        user.set_password(self.validated_data['new_password'])
+        user.save()
+        return user
+
 class StageProgressSerializer(serializers.ModelSerializer):
     class Meta:
         model = StageProgress
