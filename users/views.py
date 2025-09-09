@@ -2,8 +2,8 @@ from rest_framework import generics, status, viewsets, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.decorators import api_view, permission_classes
-from .models import User, Student, StudentUserLink, StageProgress, HandwritingSample, StudentTask, AssessmentSummary, ActivityAssignment, ActivityProgress, FinalEvaluation, TherapySessionReport, StakeholderRecommendation
-from .serializers import UserSerializer, RegisterSerializer, ProfileSerializer, ProfileUpdateSerializer, PasswordChangeSerializer, StudentSerializer, StudentUserLinkSerializer, LinkedUserSerializer, MyTokenObtainPairSerializer, HandwritingSampleSerializer, StudentTaskSerializer, AssessmentSummarySerializer, ActivityAssignmentSerializer, ActivityProgressSerializer, ActivityProgressCreateSerializer, FinalEvaluationSerializer, FinalEvaluationCreateSerializer, StakeholderRecommendationSerializer, StakeholderRecommendationCreateSerializer
+from .models import User, Student, StudentUserLink, StageProgress, HandwritingSample, StudentTask, AssessmentSummary, ActivityAssignment, ActivityProgress, FinalEvaluation, TherapySessionReport, StakeholderRecommendation, Classroom
+from .serializers import UserSerializer, RegisterSerializer, ProfileSerializer, ProfileUpdateSerializer, PasswordChangeSerializer, StudentSerializer, StudentUserLinkSerializer, LinkedUserSerializer, MyTokenObtainPairSerializer, HandwritingSampleSerializer, StudentTaskSerializer, AssessmentSummarySerializer, ActivityAssignmentSerializer, ActivityProgressSerializer, ActivityProgressCreateSerializer, FinalEvaluationSerializer, FinalEvaluationCreateSerializer, StakeholderRecommendationSerializer, StakeholderRecommendationCreateSerializer, ClassroomSerializer, ClassroomCreateUpdateSerializer, StudentClassroomSerializer
 from rest_framework.permissions import IsAuthenticated
 from .permissions import IsTeacherOrReadOnly, IsLinkedDoctorOrParentReadOnly
 from rest_framework.decorators import action
@@ -1498,3 +1498,174 @@ def get_all_stakeholder_recommendations(request, student_id):
         return Response({"error": "Student not found"}, status=404)
     except Exception as e:
         return Response({"error": str(e)}, status=500)
+
+
+# ============== CLASSROOM MANAGEMENT VIEWS ==============
+
+class ClassroomListCreateView(generics.ListCreateAPIView):
+    """
+    List all classrooms for the authenticated teacher and create new classrooms
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        # Only return classrooms created by the authenticated teacher
+        return Classroom.objects.filter(teacher=self.request.user)
+    
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return ClassroomCreateUpdateSerializer
+        return ClassroomSerializer
+    
+    def perform_create(self, serializer):
+        # Set the teacher to the authenticated user
+        serializer.save(teacher=self.request.user)
+
+
+class ClassroomDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    Retrieve, update, or delete a specific classroom
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        # Only allow access to classrooms created by the authenticated teacher
+        return Classroom.objects.filter(teacher=self.request.user)
+    
+    def get_serializer_class(self):
+        if self.request.method in ['PUT', 'PATCH']:
+            return ClassroomCreateUpdateSerializer
+        return ClassroomSerializer
+    
+    def destroy(self, request, *args, **kwargs):
+        """
+        Delete classroom and unassign all students from it
+        """
+        classroom = self.get_object()
+        
+        # Unassign all students from this classroom
+        Student.objects.filter(classroom=classroom).update(classroom=None)
+        
+        # Delete the classroom
+        classroom.delete()
+        
+        return Response(
+            {"message": f"Classroom '{classroom.name}' deleted successfully. All students have been unassigned."},
+            status=status.HTTP_200_OK
+        )
+
+
+class ClassroomStudentsView(APIView):
+    """
+    Manage students in a specific classroom
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, classroom_id):
+        """Get all students in a specific classroom"""
+        try:
+            classroom = Classroom.objects.get(id=classroom_id, teacher=request.user)
+            students = Student.objects.filter(classroom=classroom)
+            serializer = StudentClassroomSerializer(students, many=True)
+            
+            return Response({
+                'classroom': ClassroomSerializer(classroom).data,
+                'students': serializer.data,
+                'total_students': students.count()
+            })
+            
+        except Classroom.DoesNotExist:
+            return Response({"error": "Classroom not found"}, status=status.HTTP_404_NOT_FOUND)
+    
+    def post(self, request, classroom_id):
+        """Assign students to classroom"""
+        try:
+            classroom = Classroom.objects.get(id=classroom_id, teacher=request.user)
+            student_ids = request.data.get('student_ids', [])
+            
+            if not student_ids:
+                return Response({"error": "No student IDs provided"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Get students that belong to this teacher and are not already assigned to any classroom
+            students = Student.objects.filter(
+                student_id__in=student_ids,
+                teacher=request.user,
+                classroom__isnull=True  # Only unassigned students
+            )
+            
+            if not students.exists():
+                return Response({"error": "No valid unassigned students found"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Check if any of the requested students are already assigned
+            already_assigned = Student.objects.filter(
+                student_id__in=student_ids,
+                teacher=request.user,
+                classroom__isnull=False
+            )
+            
+            if already_assigned.exists():
+                assigned_names = list(already_assigned.values_list('name', flat=True))
+                return Response({
+                    "error": f"Some students are already assigned to classrooms: {', '.join(assigned_names)}"
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Assign students to classroom
+            updated_count = students.update(classroom=classroom)
+            
+            return Response({
+                "message": f"{updated_count} students assigned to classroom '{classroom.name}'"
+            }, status=status.HTTP_200_OK)
+            
+        except Classroom.DoesNotExist:
+            return Response({"error": "Classroom not found"}, status=status.HTTP_404_NOT_FOUND)
+
+
+class ClassroomStudentRemoveView(APIView):
+    """
+    Remove a student from a classroom
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def delete(self, request, classroom_id, student_id):
+        """Remove student from classroom"""
+        try:
+            classroom = Classroom.objects.get(id=classroom_id, teacher=request.user)
+            student = Student.objects.get(
+                student_id=student_id, 
+                classroom=classroom,
+                teacher=request.user
+            )
+            
+            # Remove student from classroom
+            student.classroom = None
+            student.save()
+            
+            return Response({
+                "message": f"Student '{student.name}' removed from classroom '{classroom.name}'"
+            }, status=status.HTTP_200_OK)
+            
+        except Classroom.DoesNotExist:
+            return Response({"error": "Classroom not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Student.DoesNotExist:
+            return Response({"error": "Student not found in this classroom"}, status=status.HTTP_404_NOT_FOUND)
+
+
+class UnassignedStudentsView(APIView):
+    """
+    Get students that are not assigned to any classroom
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Get all unassigned students for the current teacher"""
+        students = Student.objects.filter(
+            teacher=request.user,
+            classroom__isnull=True
+        )
+        
+        serializer = StudentClassroomSerializer(students, many=True)
+        
+        return Response({
+            'students': serializer.data,
+            'total_students': students.count()
+        })

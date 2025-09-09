@@ -78,6 +78,43 @@ export default function NavigationHeader({
                 {getRoleDisplayName(userRole)}
               </div>
 
+              {/* Dashboard Button */}
+              <button
+                onClick={() => {
+                  const dashboardUrl = userRole === 'teacher' ? '/teacher/students' : 
+                                    userRole === 'doctor' ? '/doctor/students' : 
+                                    '/parent/students'
+                  navigate(dashboardUrl)
+                }}
+                className={`
+                  inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg 
+                  transition-all duration-200 text-gray-700 bg-gray-100 hover:bg-gray-200
+                  ${isScrolled ? 'scale-90' : ''}
+                `}
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
+                Dashboard
+              </button>
+
+              {/* Classrooms Button - Only for teachers */}
+              {userRole === 'teacher' && (
+                <button
+                  onClick={() => navigate('/classrooms')}
+                  className={`
+                    inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg 
+                    transition-all duration-200 text-indigo-700 bg-indigo-100 hover:bg-indigo-200
+                    ${isScrolled ? 'scale-90' : ''}
+                  `}
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-5 0H9m0 0H5m0 0h2M7 7h10M7 11h4" />
+                  </svg>
+                  Classrooms
+                </button>
+              )}
+
               {/* Profile Button */}
               <button
                 onClick={() => navigate('/profile')}
@@ -155,6 +192,39 @@ export default function NavigationHeader({
                   {getRoleDisplayName(userRole)}
                 </div>
               </div>
+
+              {/* Dashboard Button - Mobile */}
+              <button
+                onClick={() => {
+                  const dashboardUrl = userRole === 'teacher' ? '/teacher/students' : 
+                                    userRole === 'doctor' ? '/doctor/students' : 
+                                    '/parent/students'
+                  navigate(dashboardUrl)
+                  setIsMobileMenuOpen(false)
+                }}
+                className="w-full inline-flex items-center justify-center px-4 py-3 border border-transparent text-base font-medium rounded-lg text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors duration-200"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
+                Dashboard
+              </button>
+
+              {/* Classrooms Button - Mobile - Only for teachers */}
+              {userRole === 'teacher' && (
+                <button
+                  onClick={() => {
+                    navigate('/classrooms')
+                    setIsMobileMenuOpen(false)
+                  }}
+                  className="w-full inline-flex items-center justify-center px-4 py-3 border border-transparent text-base font-medium rounded-lg text-indigo-700 bg-indigo-100 hover:bg-indigo-200 transition-colors duration-200"
+                >
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-5 0H9m0 0H5m0 0h2M7 7h10M7 11h4" />
+                  </svg>
+                  My Classrooms
+                </button>
+              )}
 
               {/* Profile Button - Mobile */}
               <button

@@ -9,7 +9,9 @@ from .views import (UserListCreateView, RegisterView, ProfileView, PasswordChang
                    complete_final_evaluation, get_evaluation_summary,
                    terminate_therapy_session, restart_therapy_from_stage5,
                    get_therapy_session_reports, get_detailed_therapy_report,
-                   stakeholder_recommendations_view, get_all_stakeholder_recommendations)
+                   stakeholder_recommendations_view, get_all_stakeholder_recommendations,
+                   ClassroomListCreateView, ClassroomDetailView, ClassroomStudentsView,
+                   ClassroomStudentRemoveView, UnassignedStudentsView)
 from rest_framework.routers import DefaultRouter
 
 router = DefaultRouter()
@@ -26,6 +28,11 @@ urlpatterns = [
     path('token/refresh/', MyTokenRefreshView.as_view(), name='token_refresh'),
     path('token/validate/', TokenValidateView.as_view(), name='token_validate'),
     path('token/extend/', ExtendSessionView.as_view(), name='extend_session'),
+    
+    # Specific student paths (must come before router includes)
+    path('students/unassigned/', UnassignedStudentsView.as_view(), name='unassigned-students'),
+    
+    # Router includes (more general patterns)
     path('', include(router.urls)),
     path('students/<int:student_id>/analyze-handwriting/', AnalyzeHandwritingView.as_view(), name='analyze-handwriting'),
     path('evaluate-tasks/', EvaluateTasksView.as_view(), name='evaluate-tasks'),
@@ -54,4 +61,10 @@ urlpatterns = [
     # Stakeholder Recommendations URLs
     path('students/<int:student_id>/stakeholder-recommendations/', stakeholder_recommendations_view, name='stakeholder-recommendations'),
     path('students/<int:student_id>/all-stakeholder-recommendations/', get_all_stakeholder_recommendations, name='all-stakeholder-recommendations'),
+    
+    # Classroom Management URLs
+    path('classrooms/', ClassroomListCreateView.as_view(), name='classroom-list-create'),
+    path('classrooms/<int:pk>/', ClassroomDetailView.as_view(), name='classroom-detail'),
+    path('classrooms/<int:classroom_id>/students/', ClassroomStudentsView.as_view(), name='classroom-students'),
+    path('classrooms/<int:classroom_id>/students/<int:student_id>/', ClassroomStudentRemoveView.as_view(), name='classroom-student-remove'),
 ]

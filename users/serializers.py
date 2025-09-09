@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Student, StudentUserLink, StageProgress, HandwritingSample, StudentTask, AssessmentSummary, ActivityAssignment, ActivityProgress, FinalEvaluation, StakeholderRecommendation
+from .models import User, Student, StudentUserLink, StageProgress, HandwritingSample, StudentTask, AssessmentSummary, ActivityAssignment, ActivityProgress, FinalEvaluation, StakeholderRecommendation, Classroom
 from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
@@ -318,4 +318,65 @@ class StakeholderRecommendationCreateSerializer(serializers.ModelSerializer):
         fields = [
             'observations', 'recommendations', 'concerns', 'positive_changes', 'support_needed'
         ]
+
+
+class ClassroomSerializer(serializers.ModelSerializer):
+    """Serializer for viewing classroom with student count"""
+    student_count = serializers.ReadOnlyField()
+    teacher_name = serializers.CharField(source='teacher.username', read_only=True)
+    
+    class Meta:
+        model = Classroom
+        fields = ['id', 'name', 'description', 'teacher', 'teacher_name', 'student_count', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'teacher', 'teacher_name', 'student_count', 'created_at', 'updated_at']
+
+
+class ClassroomCreateUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for creating and updating classrooms"""
+    class Meta:
+        model = Classroom
+        fields = ['name', 'description']
+    
+    def validate_name(self, value):
+        """Ensure classroom name is unique for the teacher"""
+        request = self.context['request']
+        teacher = request.user
+        
+        # For updates, exclude the current classroom
+        if self.instance:
+            if Classroom.objects.exclude(pk=self.instance.pk).filter(name=value, teacher=teacher).exists():
+                raise serializers.ValidationError("You already have a classroom with this name.")
+        else:
+            if Classroom.objects.filter(name=value, teacher=teacher).exists():
+                raise serializers.ValidationError("You already have a classroom with this name.")
+        
+        return value
+
+
+class StudentClassroomSerializer(serializers.ModelSerializer):
+    """Serializer for students with classroom information"""
+    classroom_name = serializers.CharField(source='classroom.name', read_only=True)
+    linked_users = serializers.SerializerMethodField()
+    stage_progress = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Student
+        fields = ['student_id', 'name', 'birthday', 'school', 'grade', 'gender', 'classroom', 'classroom_name', 'linked_users', 'stage_progress']
+    
+    def get_linked_users(self, obj):
+        links = StudentUserLink.objects.filter(student=obj)
+        return [{'user_id': link.user.id, 'username': link.user.username, 'role': link.role} for link in links]
+    
+    def get_stage_progress(self, obj):
+        try:
+            progress = StageProgress.objects.get(student=obj)
+            return {
+                'current_stage': progress.current_stage,
+                'completed_stages': progress.completed_stages
+            }
+        except StageProgress.DoesNotExist:
+            return {
+                'current_stage': 1,
+                'completed_stages': []
+            }
 
