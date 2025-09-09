@@ -2,6 +2,7 @@ import { useEffect, useState, useContext } from "react";
 import { AuthContext } from "../store/AuthContext";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import NavigationHeader from "../components/NavigationHeader";
 
 export default function ParentDashboard() {
   const { user, logout } = useContext(AuthContext);
@@ -48,37 +49,17 @@ export default function ParentDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Parent Dashboard</h1>
-              <p className="text-gray-600 mt-1">Welcome back, {user?.username || "Parent"}!</p>
-            </div>
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={() => navigate('/profile')}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-purple-700 bg-purple-100 hover:bg-purple-200 transition-colors duration-200"
-              >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                Profile
-              </button>
-              <button
-                onClick={logout}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-red-700 bg-red-100 hover:bg-red-200 transition-colors duration-200"
-              >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Navigation Header */}
+      <NavigationHeader 
+        title="Parent Dashboard"
+        subtitle={`Welcome back, ${user?.username || "Parent"}!`}
+        userRole="parent"
+        onLogout={logout}
+        gradientFrom="blue-50"
+        gradientVia="white"
+        gradientTo="indigo-50"
+        profileButtonColor="purple"
+      />
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
