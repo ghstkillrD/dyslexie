@@ -876,12 +876,16 @@ class TokenValidateView(APIView):
             
             # Calculate time until expiration
             time_until_expiry = exp_datetime - current_time
-            minutes_until_expiry = int(time_until_expiry.total_seconds() / 60)
+            total_seconds_until_expiry = int(time_until_expiry.total_seconds())
+            minutes_until_expiry = total_seconds_until_expiry // 60
+            seconds_until_expiry = total_seconds_until_expiry % 60
             
             return Response({
                 'valid': True,
                 'expires_at': exp_datetime.isoformat(),
                 'minutes_until_expiry': minutes_until_expiry,
+                'seconds_until_expiry': seconds_until_expiry,
+                'total_seconds_until_expiry': total_seconds_until_expiry,
                 'user_id': access_token['user_id'],
                 'current_time': current_time.isoformat()
             })
@@ -897,7 +901,8 @@ class ExtendSessionView(APIView):
     """
     Extend the current session by issuing a new access token
     """
-    permission_classes = [IsAuthenticated]
+    # Remove authentication requirement since we're using refresh token
+    # permission_classes = [IsAuthenticated]
     
     def post(self, request):
         try:
@@ -910,9 +915,15 @@ class ExtendSessionView(APIView):
             refresh = RefreshToken(refresh_token)
             new_access_token = refresh.access_token
             
-            # Update user's last login
-            request.user.last_login = datetime.now(timezone.utc)
-            request.user.save(update_fields=['last_login'])
+            # Get user from refresh token to update last login
+            user_id = refresh.payload.get('user_id')
+            if user_id:
+                try:
+                    user = User.objects.get(id=user_id)
+                    user.last_login = datetime.now(timezone.utc)
+                    user.save(update_fields=['last_login'])
+                except User.DoesNotExist:
+                    pass  # User not found, but still return the token
             
             return Response({
                 'access_token': str(new_access_token),
@@ -920,6 +931,11 @@ class ExtendSessionView(APIView):
                 'extended_at': datetime.now(timezone.utc).isoformat()
             })
             
+        except (InvalidToken, TokenError) as e:
+            return Response({
+                'error': 'Invalid or expired refresh token',
+                'detail': str(e)
+            }, status=401)
         except Exception as e:
             return Response({
                 'error': 'Failed to extend session',
