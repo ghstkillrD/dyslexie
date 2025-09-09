@@ -2,6 +2,7 @@ import { useEffect, useState, useContext } from "react";
 import { AuthContext } from "../store/AuthContext";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import NavigationHeader from "../components/NavigationHeader";
 
 export default function DoctorDashboard() {
   const { user, logout } = useContext(AuthContext);
@@ -47,68 +48,179 @@ export default function DoctorDashboard() {
   );
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold">Doctor Dashboard</h2>
-      <p className="mb-4">Welcome, {user?.username || "Doctor"}!</p>
-
-      <h3 className="text-xl font-semibold mb-2">Assigned Students</h3>
-
-      <input
-        type="text"
-        placeholder="Search students..."
-        className="border p-2 rounded w-full mb-3"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50">
+      {/* Navigation Header */}
+      <NavigationHeader 
+        title="Doctor Dashboard"
+        subtitle={`Welcome back, Dr. ${user?.username || "Doctor"}!`}
+        userRole="doctor"
+        onLogout={logout}
+        gradientFrom="emerald-50"
+        gradientVia="white"
+        gradientTo="teal-50"
+        profileButtonColor="emerald"
       />
 
-      <div className="overflow-y-auto max-h-80 border rounded">
-        <div className="border rounded p-3 bg-white">
-          {students.length === 0 ? (
-            <p className="text-gray-500">No assigned students</p>
-          ) : (
-            <table className="w-full text-left border">
-              <thead>
-                <tr className="bg-gray-200">
-                  <th className="p-2">Name</th>
-                  <th className="p-2">School</th>
-                  <th className="p-2">Grade</th>
-                  <th className="p-2">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredStudents.map((student) => (
-                  <tr key={student.student_id} className="border-t">
-                    <td className="p-2">{student.name}</td>
-                    <td className="p-2">{student.school}</td>
-                    <td className="p-2">{student.grade}</td>
-                    <td className="p-2">
-                      <button
-                        onClick={() => navigate(`/spw/${student.student_id}`)}
-                        className="bg-blue-500 text-white px-3 py-1 rounded"
-                      >
-                        View Progress
-                      </button>
-                      <button
-                        onClick={() => handleUnlink(student.student_id)}
-                        className="bg-red-500 text-white px-3 py-1 rounded"
-                      >
-                        Unlink
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-emerald-100">
+                <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Assigned Patients</p>
+                <p className="text-2xl font-bold text-gray-900">{students.length}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-blue-100">
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v11a2 2 0 002 2h5.586a1 1 0 00.707-.293l5.414-5.414a1 1 0 00.293-.707V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Active Cases</p>
+                <p className="text-2xl font-bold text-gray-900">{students.filter(s => s.stage_progress?.current_stage > 1 && !s.case_completed).length}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-purple-100">
+                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Completed</p>
+                <p className="text-2xl font-bold text-gray-900">{students.filter(s => s.case_completed).length}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Students Section */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Assigned Students</h2>
+                <p className="mt-1 text-sm text-gray-600">Monitor student progress and provide medical supervision</p>
+              </div>
+            </div>
+            
+            {/* Search */}
+            <div className="mt-4">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search students by name, school, grade..."
+                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Students Table */}
+          <div className="overflow-hidden">
+            {students.length === 0 ? (
+              <div className="text-center py-12">
+                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                </svg>
+                <h3 className="mt-2 text-sm font-medium text-gray-900">No assigned students</h3>
+                <p className="mt-1 text-sm text-gray-500">You haven't been assigned to any students yet.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">School</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grade</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredStudents.map((student) => (
+                      <tr key={student.student_id} className="hover:bg-gray-50 transition-colors duration-200">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 h-10 w-10">
+                              <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                                <span className="text-sm font-medium text-emerald-600">
+                                  {student.name.charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900">{student.name}</div>
+                              <div className="text-sm text-gray-500">ID: {student.student_id}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{student.school}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                            Grade {student.grade}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex space-x-3">
+                            <button
+                              onClick={() => navigate(`/spw/${student.student_id}`)}
+                              className="group relative inline-flex items-center justify-center p-2 border border-transparent rounded-full text-blue-600 bg-blue-100 hover:bg-blue-200 transition-colors duration-200"
+                              title="View Progress"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                              </svg>
+                              <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-900 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
+                                View Progress
+                              </span>
+                            </button>
+                            <button
+                              onClick={() => handleUnlink(student.student_id)}
+                              className="group relative inline-flex items-center justify-center p-2 border border-transparent rounded-full text-red-600 bg-red-100 hover:bg-red-200 transition-colors duration-200"
+                              title="Unlink from Student"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                              </svg>
+                              <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-900 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
+                                Unlink from Student
+                              </span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-
-      <button
-        onClick={logout}
-        className="mt-4 bg-red-500 text-white px-3 py-1 rounded"
-      >
-        Logout
-      </button>
     </div>
   );
 }

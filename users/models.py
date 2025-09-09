@@ -28,9 +28,27 @@ class Student(models.Model):
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES)
 
     teacher = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='students')
+    classroom = models.ForeignKey('Classroom', on_delete=models.SET_NULL, null=True, blank=True, related_name='students')
 
     def __str__(self):
         return self.name
+
+class Classroom(models.Model):
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    teacher = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='classrooms')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.name} - {self.teacher.username}"
+
+    @property
+    def student_count(self):
+        return self.students.count()
 
 class StudentUserLink(models.Model):
     ROLE_CHOICES = (

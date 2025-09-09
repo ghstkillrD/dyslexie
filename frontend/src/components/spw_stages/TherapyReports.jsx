@@ -11,6 +11,21 @@ export default function TherapyReports({ student_id }) {
   const [detailedReport, setDetailedReport] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
+  // Helper function for safe capitalization
+  const capitalize = (str) => {
+    if (!str || typeof str !== 'string') return str || 'N/A';
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+  };
+
+  const getOutcomeLabel = (outcome) => {
+    const labels = {
+      'ongoing': 'Ongoing',
+      'terminated': 'Completed',
+      'continued': 'Continued'
+    };
+    return labels[outcome] || capitalize(outcome);
+  };
+
   useEffect(() => {
     // Get user role from token
     const token = localStorage.getItem('token');
@@ -140,7 +155,7 @@ export default function TherapyReports({ student_id }) {
                 <div className="flex justify-between items-start mb-3">
                   <h4 className="font-semibold text-lg">Session {report.session_number}</h4>
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${getOutcomeColor(report.session_outcome)}`}>
-                    {report.session_outcome.charAt(0).toUpperCase() + report.session_outcome.slice(1)}
+                    {getOutcomeLabel(report.session_outcome)}
                   </span>
                 </div>
                 
@@ -211,7 +226,7 @@ export default function TherapyReports({ student_id }) {
                   <div className="md:col-span-3">
                     <span className="font-medium">Outcome:</span>{' '}
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getOutcomeColor(detailedReport.session_outcome)}`}>
-                      {detailedReport.session_outcome.charAt(0).toUpperCase() + detailedReport.session_outcome.slice(1)}
+                      {getOutcomeLabel(detailedReport.session_outcome)}
                     </span>
                   </div>
                 </div>
@@ -229,7 +244,7 @@ export default function TherapyReports({ student_id }) {
                     )}
                     {detailedReport.evaluation_summary.intervention_priority && (
                       <div>
-                        <span className="font-medium">Priority:</span> {detailedReport.evaluation_summary.intervention_priority.charAt(0).toUpperCase() + detailedReport.evaluation_summary.intervention_priority.slice(1)}
+                        <span className="font-medium">Priority:</span> {capitalize(detailedReport.evaluation_summary.intervention_priority)}
                       </div>
                     )}
                     {detailedReport.evaluation_summary.short_term_goals && (
@@ -266,7 +281,7 @@ export default function TherapyReports({ student_id }) {
                       <span className="font-medium">Progress Records:</span> {detailedReport.activities_summary.progress_records}
                     </div>
                     <div>
-                      <span className="font-medium">Activity Types:</span> {detailedReport.activities_summary.activity_types.join(', ')}
+                      <span className="font-medium">Activity Types:</span> {detailedReport.activities_summary.activity_types.map(type => capitalize(type)).join(', ')}
                     </div>
                   </div>
                 </div>
@@ -284,7 +299,7 @@ export default function TherapyReports({ student_id }) {
                           <div key={index} className="border-l-4 border-blue-200 pl-4 py-2">
                             <div className="font-medium">{activity.activity_name}</div>
                             <div className="text-sm text-gray-600">
-                              Type: {activity.activity_type} | Difficulty: {activity.difficulty} | Duration: {activity.duration_minutes} mins
+                              Type: {capitalize(activity.activity_type)} | Difficulty: {capitalize(activity.difficulty)} | Duration: {activity.duration_minutes} mins
                             </div>
                             <div className="text-sm text-gray-700 mt-1">{activity.description}</div>
                           </div>
@@ -304,7 +319,7 @@ export default function TherapyReports({ student_id }) {
                           <div key={index} className="border-l-4 border-green-200 pl-4 py-2">
                             <div className="font-medium">{progress.activity_name}</div>
                             <div className="text-sm text-gray-600">
-                              Date: {formatDate(progress.session_date)} | Performer: {progress.performer} | Score: {progress.score ? `${progress.score}/10` : 'N/A'} | Status: {progress.status}
+                              Date: {formatDate(progress.session_date)} | Performer: {capitalize(progress.performer)} | Score: {progress.score ? `${progress.score}/10` : 'N/A'} | Status: {capitalize(progress.status)}
                             </div>
                             {progress.notes && (
                               <div className="text-sm text-gray-700 mt-1">Notes: {progress.notes}</div>
@@ -329,7 +344,7 @@ export default function TherapyReports({ student_id }) {
                           <span className="font-medium">Confidence:</span> {detailedReport.final_evaluation.diagnosis_confidence}/10
                         </div>
                         <div>
-                          <span className="font-medium">Therapy Decision:</span> {detailedReport.final_evaluation.therapy_decision}
+                          <span className="font-medium">Therapy Decision:</span> {capitalize(detailedReport.final_evaluation.therapy_decision)}
                         </div>
                         {detailedReport.final_evaluation.therapy_termination_reason && (
                           <div>

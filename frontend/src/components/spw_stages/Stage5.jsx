@@ -215,7 +215,7 @@ export default function Stage5({ student_id, canEdit, isCompleted, onComplete })
           <div>
             <div className="text-gray-600">Risk Level</div>
             <div className={`font-bold px-2 py-1 rounded ${getRiskLevelColor(assessmentSummary.risk_level)}`}>
-              {assessmentSummary.risk_level.toUpperCase()}
+              {assessmentSummary.risk_level.charAt(0).toUpperCase() + assessmentSummary.risk_level.slice(1).toLowerCase()}
             </div>
           </div>
           <div>

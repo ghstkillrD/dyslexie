@@ -10,6 +10,9 @@ import ParentDashboard from './pages/ParentDashboard.jsx'
 import AddStudent from './pages/AddStudent.jsx'
 import EditStudent from './pages/EditStudent.jsx'
 import StudentProgressWindow from './pages/StudentProgressWindow.jsx'
+import ProfilePage from './pages/ProfilePage.jsx'
+import ClassroomsPage from './pages/ClassroomsPage.jsx'
+import ClassroomDetailPage from './pages/ClassroomDetailPage.jsx'
 import useSessionManager from './hooks/useSessionManager.jsx'
 import SessionWarningDialog from './components/SessionWarningDialog.jsx'
 import { setupAxiosInterceptors } from './utils/axiosInterceptors.js'
@@ -32,6 +35,11 @@ function App() {
         <Route path="/teacher/students" element={<ProtectedRoute><TeacherDashboard /></ProtectedRoute>} />
         <Route path="/doctor/students" element={<ProtectedRoute><DoctorDashboard /></ProtectedRoute>} />
         <Route path="/parent/students" element={<ProtectedRoute><ParentDashboard /></ProtectedRoute>} />
+
+        <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+
+        <Route path="/classrooms" element={<ProtectedRoute><ClassroomsPage /></ProtectedRoute>} />
+        <Route path="/classrooms/:classroomId" element={<ProtectedRoute><ClassroomDetailPage /></ProtectedRoute>} />
 
         <Route path="/teacher/students/add" element={<ProtectedRoute><AddStudent /></ProtectedRoute>} />
         <Route path="/teacher/students/edit/:id" element={<ProtectedRoute><EditStudent /></ProtectedRoute>} />

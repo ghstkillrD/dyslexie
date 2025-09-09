@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Student, StudentUserLink, StageProgress, HandwritingSample, StudentTask, AssessmentSummary, ActivityAssignment, ActivityProgress, FinalEvaluation, StakeholderRecommendation
+from .models import User, Student, StudentUserLink, StageProgress, HandwritingSample, StudentTask, AssessmentSummary, ActivityAssignment, ActivityProgress, FinalEvaluation, StakeholderRecommendation, Classroom
 from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
@@ -24,6 +24,52 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
         return user
 
+class ProfileSerializer(serializers.ModelSerializer):
+    """Serializer for viewing user profile"""
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'phone', 'role', 'date_joined', 'last_login']
+        read_only_fields = ['id', 'email', 'role', 'date_joined', 'last_login']
+
+class ProfileUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for updating user profile (excluding email and role)"""
+    class Meta:
+        model = User
+        fields = ['username', 'phone']
+    
+    def validate_username(self, value):
+        """Ensure username is unique except for current user"""
+        user = self.context['request'].user
+        if User.objects.exclude(pk=user.pk).filter(username=value).exists():
+            raise serializers.ValidationError("This username is already taken.")
+        return value
+
+class PasswordChangeSerializer(serializers.Serializer):
+    """Serializer for changing user password"""
+    current_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True, validators=[validate_password])
+    confirm_password = serializers.CharField(required=True)
+    
+    def validate_current_password(self, value):
+        """Validate current password"""
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("Current password is incorrect.")
+        return value
+    
+    def validate(self, attrs):
+        """Validate that new passwords match"""
+        if attrs['new_password'] != attrs['confirm_password']:
+            raise serializers.ValidationError("New passwords do not match.")
+        return attrs
+    
+    def save(self):
+        """Update user password"""
+        user = self.context['request'].user
+        user.set_password(self.validated_data['new_password'])
+        user.save()
+        return user
+
 class StageProgressSerializer(serializers.ModelSerializer):
     class Meta:
         model = StageProgress
@@ -38,13 +84,20 @@ class StudentSerializer(serializers.ModelSerializer):
         child=serializers.EmailField(), write_only=True, required=False
     )
     stage_progress = StageProgressSerializer(read_only=True)
+    case_completed = serializers.SerializerMethodField()
 
     class Meta:
         model = Student
         fields = [
             'student_id', 'name', 'birthday', 'school', 'grade', 'gender',
-            'doctor_emails', 'parent_emails', 'stage_progress'
+            'doctor_emails', 'parent_emails', 'stage_progress', 'case_completed'
         ]
+    
+    def get_case_completed(self, obj):
+        """Return whether the case has been completed"""
+        if hasattr(obj, 'final_evaluation'):
+            return obj.final_evaluation.case_completed
+        return False
     
     def create(self, validated_data):
         doctor_emails = validated_data.pop('doctor_emails', [])
@@ -123,6 +176,43 @@ class HandwritingSampleSerializer(serializers.ModelSerializer):
         return None
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Remove username field and add email and role fields
+        self.fields['email'] = serializers.EmailField()
+        self.fields['role'] = serializers.ChoiceField(choices=[
+            ('teacher', 'Teacher'),
+            ('doctor', 'Medical Professional'),
+            ('parent', 'Parent/Guardian')
+        ])
+        del self.fields['username']
+
+    def validate(self, attrs):
+        # Get email, password, and selected role from the request
+        email = attrs.get('email')
+        password = attrs.get('password')
+        selected_role = attrs.get('role')
+        
+        # Find user by email
+        try:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            user = User.objects.get(email=email)
+            
+            # Validate that the user's actual role matches the selected role
+            if user.role != selected_role:
+                raise serializers.ValidationError(
+                    f'Invalid credentials. This email is registered as a {user.get_role_display()}, '
+                    f'but you are trying to sign in as a {dict(self.fields["role"].choices)[selected_role]}.'
+                )
+            
+            attrs['username'] = user.username  # Set username for parent validation
+        except User.DoesNotExist:
+            raise serializers.ValidationError('Invalid email or password')
+        
+        # Call parent validation with username
+        return super().validate(attrs)
+
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
@@ -235,4 +325,65 @@ class StakeholderRecommendationCreateSerializer(serializers.ModelSerializer):
         fields = [
             'observations', 'recommendations', 'concerns', 'positive_changes', 'support_needed'
         ]
+
+
+class ClassroomSerializer(serializers.ModelSerializer):
+    """Serializer for viewing classroom with student count"""
+    student_count = serializers.ReadOnlyField()
+    teacher_name = serializers.CharField(source='teacher.username', read_only=True)
+    
+    class Meta:
+        model = Classroom
+        fields = ['id', 'name', 'description', 'teacher', 'teacher_name', 'student_count', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'teacher', 'teacher_name', 'student_count', 'created_at', 'updated_at']
+
+
+class ClassroomCreateUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for creating and updating classrooms"""
+    class Meta:
+        model = Classroom
+        fields = ['name', 'description']
+    
+    def validate_name(self, value):
+        """Ensure classroom name is unique for the teacher"""
+        request = self.context['request']
+        teacher = request.user
+        
+        # For updates, exclude the current classroom
+        if self.instance:
+            if Classroom.objects.exclude(pk=self.instance.pk).filter(name=value, teacher=teacher).exists():
+                raise serializers.ValidationError("You already have a classroom with this name.")
+        else:
+            if Classroom.objects.filter(name=value, teacher=teacher).exists():
+                raise serializers.ValidationError("You already have a classroom with this name.")
+        
+        return value
+
+
+class StudentClassroomSerializer(serializers.ModelSerializer):
+    """Serializer for students with classroom information"""
+    classroom_name = serializers.CharField(source='classroom.name', read_only=True)
+    linked_users = serializers.SerializerMethodField()
+    stage_progress = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Student
+        fields = ['student_id', 'name', 'birthday', 'school', 'grade', 'gender', 'classroom', 'classroom_name', 'linked_users', 'stage_progress']
+    
+    def get_linked_users(self, obj):
+        links = StudentUserLink.objects.filter(student=obj)
+        return [{'user_id': link.user.id, 'username': link.user.username, 'role': link.role} for link in links]
+    
+    def get_stage_progress(self, obj):
+        try:
+            progress = StageProgress.objects.get(student=obj)
+            return {
+                'current_stage': progress.current_stage,
+                'completed_stages': progress.completed_stages
+            }
+        except StageProgress.DoesNotExist:
+            return {
+                'current_stage': 1,
+                'completed_stages': []
+            }
 
