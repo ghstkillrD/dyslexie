@@ -108,7 +108,7 @@ export default function TeacherDashboard() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Active Cases</p>
-                <p className="text-2xl font-bold text-gray-900">{students.filter(s => s.stage_progress?.current_stage > 1).length}</p>
+                <p className="text-2xl font-bold text-gray-900">{students.filter(s => s.stage_progress?.current_stage > 1 && !s.case_completed).length}</p>
               </div>
             </div>
           </div>
@@ -122,7 +122,7 @@ export default function TeacherDashboard() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Completed</p>
-                <p className="text-2xl font-bold text-gray-900">{students.filter(s => s.stage_progress?.current_stage >= 7).length}</p>
+                <p className="text-2xl font-bold text-gray-900">{students.filter(s => s.case_completed).length}</p>
               </div>
             </div>
           </div>

@@ -84,13 +84,20 @@ class StudentSerializer(serializers.ModelSerializer):
         child=serializers.EmailField(), write_only=True, required=False
     )
     stage_progress = StageProgressSerializer(read_only=True)
+    case_completed = serializers.SerializerMethodField()
 
     class Meta:
         model = Student
         fields = [
             'student_id', 'name', 'birthday', 'school', 'grade', 'gender',
-            'doctor_emails', 'parent_emails', 'stage_progress'
+            'doctor_emails', 'parent_emails', 'stage_progress', 'case_completed'
         ]
+    
+    def get_case_completed(self, obj):
+        """Return whether the case has been completed"""
+        if hasattr(obj, 'final_evaluation'):
+            return obj.final_evaluation.case_completed
+        return False
     
     def create(self, validated_data):
         doctor_emails = validated_data.pop('doctor_emails', [])

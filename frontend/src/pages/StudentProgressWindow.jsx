@@ -17,7 +17,7 @@ export default function StudentProgressWindow() {
   const [currentStage, setCurrentStage] = useState(1);
   const [currentTab, setCurrentTab] = useState('stages'); // 'stages', 'reports', or 'messages'
   const [student, setStudent] = useState(null);
-  const [progress, setProgress] = useState({ current_stage: 1, completed_stages: [] });
+  const [progress, setProgress] = useState({ current_stage: 1, completed_stages: [], case_completed: false });
   const [userRole, setUserRole] = useState(null);
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -48,9 +48,12 @@ export default function StudentProgressWindow() {
       if (res.data.current_stage || res.data.stage_progress) {
         // Accept both formats: current_stage or nested stage_progress
         const stageData = res.data.stage_progress || {};
+        const isCompleted = res.data.case_completed || false;
+        
         setProgress({
           current_stage: stageData.current_stage || res.data.current_stage || 1,
-          completed_stages: stageData.completed_stages || []
+          completed_stages: stageData.completed_stages || [],
+          case_completed: isCompleted
         });
         setCurrentStage(stageData.current_stage || res.data.current_stage || 1);
       }
@@ -118,7 +121,21 @@ export default function StudentProgressWindow() {
   };
 
   const isLocked = (index) => index + 1 > (progress?.current_stage || 1);
-  const isCompleted = (index) => progress?.completed_stages?.includes(index + 1) || false;
+  const isCompleted = (index) => {
+    const stageNumber = index + 1;
+    // If case is completed, mark stage 7 as completed
+    if (progress?.case_completed && stageNumber === 7) {
+      return true;
+    }
+    return progress?.completed_stages?.includes(stageNumber) || false;
+  };
+
+  const calculateOverallProgress = () => {
+    if (progress?.case_completed) {
+      return 100; // Case is fully completed
+    }
+    return Math.round(((progress?.completed_stages?.length || 0) / 7) * 100);
+  };
 
   const canEditStage = (stageNumber) => {
     const allowed = stageRoles[stageNumber] || [];
@@ -128,10 +145,11 @@ export default function StudentProgressWindow() {
   const handleStageComplete = (data) => {
     // Only update if we have proper stage data
     if (data && data.current_stage !== undefined && data.completed_stages !== undefined) {
-      setProgress({
+      setProgress(prevProgress => ({
         current_stage: data.current_stage,
-        completed_stages: data.completed_stages
-      });
+        completed_stages: data.completed_stages,
+        case_completed: prevProgress.case_completed // Preserve case completion status
+      }));
       setCurrentStage(data.current_stage);
     } else {
       // If no proper stage data, refresh from server
@@ -192,7 +210,7 @@ export default function StudentProgressWindow() {
 
       // Show success message
       alert(
-        `✅ Progress Terminated Successfully!\n\n` +
+        `✅ Progress Completed Successfully!\n\n` +
         `${response.data.message}\n\n` +
         `Current Stage: ${response.data.current_stage}\n` +
         `Preserved: ${response.data.preserved_data}`
@@ -286,12 +304,12 @@ export default function StudentProgressWindow() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-700">Overall Progress</span>
-            <span className="text-sm text-gray-500">{Math.round(((progress?.completed_stages?.length || 0) / 7) * 100)}% Complete</span>
+            <span className="text-sm text-gray-500">{calculateOverallProgress()}% Complete</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div 
               className="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full transition-all duration-500"
-              style={{ width: `${((progress?.completed_stages?.length || 0) / 7) * 100}%` }}
+              style={{ width: `${calculateOverallProgress()}%` }}
             ></div>
           </div>
         </div>

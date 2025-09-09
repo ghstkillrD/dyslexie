@@ -17,6 +17,15 @@ export default function TherapyReports({ student_id }) {
     return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
   };
 
+  const getOutcomeLabel = (outcome) => {
+    const labels = {
+      'ongoing': 'Ongoing',
+      'terminated': 'Completed',
+      'continued': 'Continued'
+    };
+    return labels[outcome] || capitalize(outcome);
+  };
+
   useEffect(() => {
     // Get user role from token
     const token = localStorage.getItem('token');
@@ -146,7 +155,7 @@ export default function TherapyReports({ student_id }) {
                 <div className="flex justify-between items-start mb-3">
                   <h4 className="font-semibold text-lg">Session {report.session_number}</h4>
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${getOutcomeColor(report.session_outcome)}`}>
-                    {capitalize(report.session_outcome)}
+                    {getOutcomeLabel(report.session_outcome)}
                   </span>
                 </div>
                 
@@ -217,7 +226,7 @@ export default function TherapyReports({ student_id }) {
                   <div className="md:col-span-3">
                     <span className="font-medium">Outcome:</span>{' '}
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getOutcomeColor(detailedReport.session_outcome)}`}>
-                      {capitalize(detailedReport.session_outcome)}
+                      {getOutcomeLabel(detailedReport.session_outcome)}
                     </span>
                   </div>
                 </div>

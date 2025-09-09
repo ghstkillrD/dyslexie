@@ -1169,6 +1169,12 @@ def terminate_therapy_session(request, student_id):
         # Terminate therapy
         evaluation.terminate_therapy(termination_reason)
         
+        # Mark stage 7 as completed in progress tracking
+        stage_progress = student.stage_progress
+        if 7 not in stage_progress.completed_stages:
+            stage_progress.completed_stages.append(7)
+            stage_progress.save()
+        
         return Response({
             "message": "Therapy session terminated successfully",
             "student_name": student.name,
