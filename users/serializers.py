@@ -125,20 +125,34 @@ class HandwritingSampleSerializer(serializers.ModelSerializer):
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Remove username field and add email field
+        # Remove username field and add email and role fields
         self.fields['email'] = serializers.EmailField()
+        self.fields['role'] = serializers.ChoiceField(choices=[
+            ('teacher', 'Teacher'),
+            ('doctor', 'Medical Professional'),
+            ('parent', 'Parent/Guardian')
+        ])
         del self.fields['username']
 
     def validate(self, attrs):
-        # Get email and password from the request
+        # Get email, password, and selected role from the request
         email = attrs.get('email')
         password = attrs.get('password')
+        selected_role = attrs.get('role')
         
         # Find user by email
         try:
             from django.contrib.auth import get_user_model
             User = get_user_model()
             user = User.objects.get(email=email)
+            
+            # Validate that the user's actual role matches the selected role
+            if user.role != selected_role:
+                raise serializers.ValidationError(
+                    f'Invalid credentials. This email is registered as a {user.get_role_display()}, '
+                    f'but you are trying to sign in as a {dict(self.fields["role"].choices)[selected_role]}.'
+                )
+            
             attrs['username'] = user.username  # Set username for parent validation
         except User.DoesNotExist:
             raise serializers.ValidationError('Invalid email or password')

@@ -21,7 +21,8 @@ export default function LoginPage() {
     try {
       const res = await axios.post('http://127.0.0.1:8000/api/users/token/', {
         email: form.email,
-        password: form.password
+        password: form.password,
+        role: role
       })
       
       const token = res.data.access
@@ -35,7 +36,16 @@ export default function LoginPage() {
       else if (role === 'doctor') navigate('/doctor/students')
       else navigate('/parent/students')
     } catch (err) {
-      setError('Invalid credentials. Please check your email and password.')
+      // Handle specific error messages from backend
+      if (err.response?.data?.non_field_errors) {
+        setError(err.response.data.non_field_errors[0])
+      } else if (err.response?.data?.detail) {
+        setError(err.response.data.detail)
+      } else if (err.response?.status === 401) {
+        setError('Invalid credentials. Please check your email and password.')
+      } else {
+        setError('Login failed. Please try again.')
+      }
     } finally {
       setLoading(false)
     }
