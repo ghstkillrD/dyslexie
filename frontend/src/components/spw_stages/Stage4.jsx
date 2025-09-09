@@ -213,7 +213,7 @@ export default function Stage4({ student_id, canEdit, isCompleted, onComplete })
               riskLevel === 'low' ? 'text-green-600' : 
               riskLevel === 'medium' ? 'text-yellow-600' : 'text-red-600'
             }`}>
-              {riskLevel.toUpperCase()}
+              {riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1).toLowerCase()}
             </div>
           </div>
         </div>
@@ -293,7 +293,7 @@ export default function Stage4({ student_id, canEdit, isCompleted, onComplete })
         <div className="bg-green-50 p-4 rounded-lg">
           <h5 className="font-semibold text-green-800 mb-2">Assessment Summary Saved</h5>
           <div className="text-sm text-green-700">
-            <p><strong>Risk Level:</strong> {assessmentSummary.risk_level}</p>
+            <p><strong>Risk Level:</strong> {assessmentSummary.risk_level.charAt(0).toUpperCase() + assessmentSummary.risk_level.slice(1).toLowerCase()}</p>
             <p><strong>Dyslexia Indication:</strong> {assessmentSummary.dyslexia_indication ? 'Yes' : 'No'}</p>
             <p><strong>Total Score:</strong> {assessmentSummary.total_score}/{assessmentSummary.total_max_score} ({assessmentSummary.percentage_score.toFixed(1)}%)</p>
           </div>
